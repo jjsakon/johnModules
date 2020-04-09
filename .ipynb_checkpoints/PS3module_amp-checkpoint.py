@@ -1,3 +1,4 @@
+# same as PS3_module but choosing only top 1/3 of amps for PS2!!
 import pandas as pd
 import numpy as np
 from cmlreaders import CMLReader, get_data_index
@@ -13,6 +14,7 @@ from ptsa.data.filters import morlet
 from ptsa.data.filters import ButterworthFilter
 from general import *
 
+## functions ##
 
 def Log(s, logname):
     date = datetime.datetime.now().strftime('%F_%H-%M-%S')
@@ -112,6 +114,7 @@ def findStimbp(evs_on,sub,session,tal_struct,exp):
         test_pair = [evs_on.iloc[i].stim_params[0]['anode_number'],evs_on.iloc[i].stim_params[0]['cathode_number']]
         if stim_pair != test_pair:
             stim_electrode_change = 1
+            stim_pair = copy(test_pair)
             print('The anode/cathode pair changed during this session!! Task: '+exp+
                   ', '+sub+', session: '+str(session))
     chs = [list(temp) for temp in tal_struct['channel']]
@@ -166,30 +169,34 @@ def get_tal_distmat(tal_struct):
     
     return distmat  
     
-def get_multitaper_power(eegs, time, freqs):
-    # note: must be in ptsa format!!
-    from ptsa.data.timeseries import TimeSeriesX
+def ptsa_to_mne(eegs,time_range): # convert ptsa to mne    
     import mne
     
-    sr = int(eegs.samplerate) #get samplerate
+    sr = int(eegs.samplerate) #get samplerate    
+    eegs = eegs[:, :, :].transpose('event', 'channel', 'time') # make sure right order of names
     
-    #Get multitaper power for all channels first
-    eegs = eegs[:, :, :].transpose('event', 'channel', 'time')
-    
-    time = [x/1000 for x in time] # convert to s for MNE
+    time = [x/1000 for x in time_range] # convert to s for MNE
     clips = np.array(eegs[:, :, int(sr*time[0]):int(sr*time[1])])
 
-    #Get powers
     mne_evs = np.empty([clips.shape[0], 3]).astype(int)
     mne_evs[:, 0] = np.arange(clips.shape[0]) # at each timepoint
     mne_evs[:, 1] = clips.shape[2] # 0
     mne_evs[:, 2] = list(np.zeros(clips.shape[0]))
     event_id = dict(resting=0)
     tmin=0.0
-    info = mne.create_info([str(i) for i in range(eegs.shape[1])], sr, ch_types='eeg')       
-
-    arr = mne.EpochsArray(np.array(clips), info, mne_evs, tmin, event_id) 
-
+    info = mne.create_info([str(i) for i in range(eegs.shape[1])], sr, ch_types='eeg')  
+    
+    arr = mne.EpochsArray(np.array(clips), info, mne_evs, tmin, event_id)
+    return arr
+    
+def get_multitaper_power(eegs, time, freqs):
+    # note: must be in ptsa format!!
+    from ptsa.data.timeseries import TimeSeriesX
+    import mne   
+    
+    time_range = time # how long is eeg?
+    arr = ptsa_to_mne(eegs,time_range)
+    
     #Use MNE for multitaper power
     pows, fdone = mne.time_frequency.psd_multitaper(arr, fmin=freqs[0], fmax=freqs[-1], tmin=0.0,
                                                        verbose=False);
@@ -406,7 +413,7 @@ def CMLReadDFRow(row):
     '''
     rd = row._asdict() # this takes df and takes values from 1 row as a dict
     return CMLReader(rd['subject'], rd['experiment'], rd['session'], \
-                     rd['montage'], rd['localization'])
+                     montage=rd['montage'], localization=rd['localization'])
     # dirty secret: Readers needs: eegoffset, experiment, subject, and eegfile...but really should
     # pass in sessions since sampling rate could theoretically change...
 
@@ -519,157 +526,6 @@ def ClusterRun(function, parameter_list, max_cores=100):
         res = view.map(function, parameter_list)
         
     return res
-
-def PowerSpectra(subjects, electrodes, freqs, avg_ref=False, zscore=False, \
-        bin_elecs=True, internal_bipolar=False, elec_masks=False, debug=False):
-    buf_ms = 1000
-    start_time = 0
-    end_time = 1600
-    morlet_reps = 6
-    rec_results = []
-    nrec_results = []
-
-    is_string = isinstance(subjects,str)
-    if is_string: # if just one string
-        subjects = [subjects]
-    #import ipdb; ipdb.set_trace()    
-    for sub in subjects: # for each subject
-        df_sub = SubjectDataFrames(sub) # get their dataframe
-        sub_rec_powers = np.zeros(len(freqs))
-        sub_nrec_powers = np.zeros(len(freqs))
-        first_run = True
-        first_channel_flags = None
-        num_channels_found = 0
-        df_per_sub = 0
-        mask_index = -1
-        
-        for row in df_sub.itertuples(): # for each row (session) in dataframe
-            mask_index += 1
-            try:
-                reader = CMLReadDFRow(row) # read this session
-                # This does not work for this data set,
-                # so we will get these from load_eeg(...).to_ptsa() later.
-                # contacts = reader.load('contacts')
-                evs = reader.load('events')
-                enc_evs = evs[evs.type=='WORD']               
-                if np.sum(enc_evs.recalled == True) == 0:
-                    raise IndexError('No recalled events')
-                if np.sum(enc_evs.recalled == False) == 0:
-                    raise IndexError('No non-recalled events')
-
-                # clean=True for Localized Component Filtering (LCF)
-                eeg = reader.load_eeg(events=enc_evs, rel_start= start_time - buf_ms, \
-                    rel_stop= end_time + buf_ms, clean=True)
-                
-                if len(eeg.events) != enc_evs.shape[0]:
-                    raise IndexError(str(len(eeg.events)) + ' eeg events for ' + \
-                                     str(enc_evs.shape[0]) + ' encoding events')
-  
-                # added from Assignment2  
-                if(evs['eegoffset'].max()<0):
-                    print('### Had max eegoffset value of: ' + str(evs['eegoffset'].max()) +  
-                        ' in row: ' + str(row))
-                    continue   
-#                 if eeg.samplerate != 500:
-#                     print('### Had to resample values in session: ' + str(sess))
-#                     eeg = eeg.resampled(500) # I guess this resamples??                
-                if avg_ref == True:
-                    # Reference to average
-                    avg_ref_data = np.mean(eeg.data, (1))
-                    for i in range(eeg.data.shape[1]):
-                        eeg.data[:,i,:] = eeg.data[:,i,:] - avg_ref_data                
-                if internal_bipolar == True:
-                    # Bipolar reference to nearest labeled electrode
-                    eeg.data -= np.roll(eeg.data, 1, 1)
-
-                sr = eeg.samplerate
-                # print('sampling rate (Hz)',sr)0
-            
-                eeg_ptsa = eeg.to_ptsa()                 
-                
-                if elec_masks:
-                    if electrodes[mask_index] is None:
-                        raise ValueError('No channel mask available for session ' + \
-                                         str(mask_index))
-                    if isinstance(electrodes[mask_index], np.ndarray):
-                        channel_flags = electrodes[mask_index].tolist()
-                    else:
-                        channel_flags = electrodes[mask_index]
-                else:
-                    channels = eeg_ptsa.channel.values
-                    channel_flags = [c in electrodes for c in channels] # just puts true for all
-                    # all you ever need is the mask to get the channels for the eeg_ptsa to eeg_chan 
-                
-                if np.sum(channel_flags)==0:
-                    if elec_masks:
-                        raise IndexError('No channels for region index '+str(mask_index))
-                    else:
-                        raise IndexError('No matching channels found for '+str(electrodes))
-                
-                eeg_chan = eeg_ptsa[:,channel_flags,:]
-                
-                freq_range = [58., 62.]
-                b_filter = ButterworthFilter(timeseries=eeg_chan, freq_range=freq_range, filt_type='stop', order=4)
-                eeg_filtered = b_filter.filter()
-            
-                wf = morlet.MorletWaveletFilter(timeseries=eeg_filtered, freqs=freqs, \
-                    width=morlet_reps, output=['power'], complete=True)
-                powers_plusbuf = wf.filter()
-                # freqs, events, elecs, and time
-                powers = powers_plusbuf[:, :, :, int((buf_ms/1000)*sr):-1*int((buf_ms/1000)*sr)]
-                
-                # Average over time
-                powers = np.mean(powers, (3))
-                
-                # Across events
-                if zscore:
-                    powers = scipy.stats.zscore(powers, 1, ddof=1)
-                
-                if bin_elecs:
-                    rec_powers = np.mean(powers[:,enc_evs.recalled == True,:].data, (1,2))
-                    nrec_powers = np.mean(powers[:,enc_evs.recalled == False,:].data, (1,2))
-                else:
-                    if first_run==True:
-                        first_run = False
-                        first_channel_flags = channel_flags
-                        num_channels_found = powers.shape[2]
-                        sub_rec_powers = np.zeros((powers.shape[0], powers.shape[2]))
-                        sub_nrec_powers = np.zeros((powers.shape[0], powers.shape[2]))
-                    else:
-                        if np.any(first_channel_flags != channel_flags):
-                            raise IndexError('Mismatched electrodes for subject')
-                        if num_channels_found != powers.shape[2]:
-                            raise IndexError('Inconsistent number of electrodes found')
-                    
-                    rec_powers = np.mean(powers[:,enc_evs.recalled == True,:].data, (1))
-                    nrec_powers = np.mean(powers[:,enc_evs.recalled == False,:].data, (1))
-                
-                if np.any(np.isnan(rec_powers)) or np.any(np.isnan(nrec_powers)):
-                    print('rec_powers', rec_powers)
-                    print('nrec_powers', nrec_powers)
-                    raise ValueError('nan values in eeg power')
-            
-                sub_rec_powers += rec_powers
-                sub_nrec_powers += nrec_powers
-                df_per_sub += 1
-            except Exception as e:   
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                line_num = exc_tb.tb_lineno
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                LogDFExceptionLine(row, e, line_num, fname)
-                if debug:
-                    raise
-
-        print('df_per_sub', df_per_sub)
-        sub_rec_powers /= df_per_sub
-        sub_nrec_powers /= df_per_sub
-        
-        rec_results.append(sub_rec_powers)
-        nrec_results.append(sub_nrec_powers)
-        
-        print('eeg appended for subject ' + sub)        
-        
-    return (freqs, rec_results, nrec_results)
 
 class SubjectStats():
     def __init__(self):
@@ -829,7 +685,7 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
         mont = int(row.montage)        
         loc = int(row.localization)
         exp = row.experiment
-        session = int(row.session)
+        session = row.session
         evs = reader.load('events')            
 
         #evs_on, session_array = get_stim_events(evs,session) #sub, exp, montage=mont)  # this seemed like steps before CMLReaders
@@ -864,10 +720,22 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
         # get functional connectivity matrix from resting state data (made in getBaseFxlConn)
         if test_freq_range is True:
             conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
-                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network'+'.p')    
+                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
+            if exp == 'PS2' and sub == 'R1108J' and mont == 0: # mont and loc changed and separate FC for both 
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_0_3_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
+            elif exp == 'PS2' and sub == 'R1108J' and mont == 1: # note only did PS2 so only need to add to this module
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_4_9_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
         else:
             conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
-                                                sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+            if exp == 'PS2' and sub == 'R1108J' and mont == 0: # mont and loc changed and separate FC for both 
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_0_3_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+            elif exp == 'PS2' and sub == 'R1108J' and mont == 1:   
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_4_9_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p') 
         with open(conn_file,'rb') as f:          
             conn,num_10s_events = pickle.load(f)
         from scipy.special import logit    
@@ -969,10 +837,12 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
                 bad_filt[idx] = 1
         
         #Identify channels to exclude due to decay artifact
-        pvals, lev_pvals = artifactExclusion(eeg_pre,eeg_post)
+        pvals, lev_pvals = artifactExclusion(eeg_pre,eeg_post) # note: numbers in here are hard-coded and based on -950:-50 and 50:950
         
         # can set a number. Here just grabbing all unique amplitudes:        
         desired_amps = {dlist[0]['amplitude'] for dlist in evs_on.stim_params.to_list()} # {750}
+        # choose the max of the 3! 
+        desired_amps = [max(desired_amps)]
         desired_pulses = {dlist[0]['pulse_freq'] for dlist in evs_on.stim_params.to_list()} # {10} 
         
         good_pre = np.zeros(evs_on.shape[0]); 
@@ -1077,10 +947,11 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
 
     fn = os.path.join(sub, #'compiled/PS3_NMA/'+sub,
                       sub+'_exp-'+exp+'_session-'+str(session)+'_'+str(fmin)+'-'+str(fmax)+'-fc_'+
-                      str(fmin_pow)+'-'+str(fmax_pow)+'-pow.p') #_pulse-10.p')            
+                      str(fmin_pow)+'-'+str(fmax_pow)+'-pow_HIGHESTAMP.p') #_pulse-10.p')            
 
     with open(fn,'wb') as f:
         pickle.dump({'sess_Ts':sess_Ts, 'stimbps':stimbps, 'Conn_Zs': Conn_Zs, 'Conn_Ps': Conn_Ps, 
                      'sessions':sessions, 'tal_structs': tal_structs, 'subjects':subjects,
                      'good_chans':good_chans, 'regs':regs, 'electrode_indicator':electrode_indicator,
                      'orig_T_stats':orig_T_stats}, f)
+    return

@@ -1,6 +1,11 @@
 ## These are general .py programs written to be used across all programs ##
 import numpy as np
 
+def seFromProp(num_correct,trials):
+    # calculate standard error for proportions
+    stderr = np.sqrt(num_correct*(1-num_correct/trials)/(trials-1)) / np.sqrt(trials)
+    return stderr
+
 def findInd(idx): # note: np.where does this, but it returns an array and this returns a list
     # get the indices when given boolean vector (like find function in matlab)
     idxs = [i for i,val in enumerate(idx) if val]

@@ -195,7 +195,6 @@ def get_multitaper_power(eegs, time, freqs):
     
     time_range = time # how long is eeg?
     arr = ptsa_to_mne(eegs,time_range)
-    
     #Use MNE for multitaper power
     pows, fdone = mne.time_frequency.psd_multitaper(arr, fmin=freqs[0], fmax=freqs[-1], tmin=0.0,
                                                        verbose=False);
@@ -203,6 +202,19 @@ def get_multitaper_power(eegs, time, freqs):
     pows = np.mean(np.log10(pows), 2) #will be shaped n_epochs, n_channels
     
     return pows,fdone # powers and freq. done
+
+def get_tfr_multitaper_power(eegs, freqs, n_cycles, TBW, time):
+    # input PTSA format
+    from ptsa.data.timeseries import TimeSeriesX
+    import mne
+
+    time_range = time # how long is eeg?
+    arr = ptsa_to_mne(eegs,time_range)
+    # this multitaper program allows you to smooth via cycles at each frequency
+    pows = mne.time_frequency.tfr_multitaper(arr, freqs=freqs, n_cycles=n_cycles,
+                           time_bandwidth=TBW, return_itc=False, average=False)
+    pows = np.mean(np.mean(np.log10(pows.data),2),2) # average across freqs and times to get n_epochs X chs
+    return pows
 
 def find_sat_events(eegs,acceptable_saturations):
     #Return array of chans x events with 1s where saturation is found   
@@ -719,10 +731,22 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
         # get functional connectivity matrix from resting state data (made in getBaseFxlConn)
         if test_freq_range is True:
             conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
-                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network'+'.p')    
+                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
+            if exp == 'PS2' and sub == 'R1108J' and mont == 0: # mont and loc changed and separate FC for both 
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_0_3_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
+            elif exp == 'PS2' and sub == 'R1108J' and mont == 1: # note only did PS2 so only need to add to this module
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_4_9_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
         else:
             conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
-                                                sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+            if exp == 'PS2' and sub == 'R1108J' and mont == 0: # mont and loc changed and separate FC for both 
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_0_3_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+            elif exp == 'PS2' and sub == 'R1108J' and mont == 1:   
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_4_9_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')            
         with open(conn_file,'rb') as f:          
             conn,num_10s_events = pickle.load(f)
         from scipy.special import logit    
@@ -772,8 +796,8 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
                 
             # clean=True for Localized Component Filtering (LCF)
             # reader.load_eeg doesn't seem to like it with < 1 s of data or when 0 isn't included
+            print('Session: '+str(session))
             eeg = reader.load_eeg(events=stim_evs, rel_start=start, rel_stop=end, clean=True, scheme=pairs)
-
             if len(eeg.events) != stim_evs.shape[0]:
                 raise IndexError(str(len(eeg.events)) + ' eeg events for ' + \
                                 str(stim_evs.shape[0]) + ' encoding events')   

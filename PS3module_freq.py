@@ -878,10 +878,22 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
         # get functional connectivity matrix from resting state data (made in getBaseFxlConn)
         if test_freq_range is True:
             conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
-                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network'+'.p')    
+                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
+            if exp == 'PS2' and sub == 'R1108J' and mont == 0: # mont and loc changed and separate FC for both 
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_0_3_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
+            elif exp == 'PS2' and sub == 'R1108J' and mont == 1: # note only did PS2 so only need to add to this module
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_4_9_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network.p')
         else:
             conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
-                                                sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+            if exp == 'PS2' and sub == 'R1108J' and mont == 0: # mont and loc changed and separate FC for both 
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_0_3_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
+            elif exp == 'PS2' and sub == 'R1108J' and mont == 1:   
+                conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
+                                            sub+'_4_9_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p') 
         with open(conn_file,'rb') as f:          
             conn,num_10s_events = pickle.load(f)
         from scipy.special import logit    
