@@ -819,7 +819,11 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
 
             # Use MNE to get multitaper spectral power
             eeg_length = end-start
-            pows,freqs_done = get_multitaper_power(eeg, time=[0,eeg_length],freqs = np.array([fmin_pow, fmax_pow])) 
+            if fmin_pow==fmax_pow: # if single band, use tfr_multitaper
+                TBW = 2
+                pows = get_tfr_multitaper_power(eeg, np.array([fmin_pow]), np.array([fmin_pow])/2, TBW, time=[0,eeg_length])
+            else:
+                pows,freqs_done = get_multitaper_power(eeg, time=[0,eeg_length],freqs = np.array([fmin_pow, fmax_pow])) 
             # returns log(powers) evts X channels averaged over time
 
             # this finds consecutive timepoints with no change in power. 10 or more of these is enough to remove an event

@@ -198,6 +198,19 @@ def get_multitaper_power(eegs, time, freqs):
     
     return pows,fdone # powers and freq. done
 
+def get_tfr_multitaper_power(eegs, freqs, n_cycles, TBW, time):
+    # input PTSA format
+    from ptsa.data.timeseries import TimeSeriesX
+    import mne
+
+    time_range = time # how long is eeg?
+    arr = ptsa_to_mne(eegs,time_range)
+    # this multitaper program allows you to smooth via cycles at each frequency
+    pows = mne.time_frequency.tfr_multitaper(arr, freqs=freqs, n_cycles=n_cycles,
+                           time_bandwidth=TBW, return_itc=False, average=False)
+    pows = np.mean(np.mean(np.log10(pows.data),2),2) # average across freqs and times to get n_epochs X chs
+    return pows
+
 def find_sat_events(eegs,acceptable_saturations):
     #Return array of chans x events with 1s where saturation is found   
     
@@ -956,7 +969,11 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
 
             # Use MNE to get multitaper spectral power
             eeg_length = end-start
-            pows,freqs_done = get_multitaper_power(eeg, time=[0,eeg_length],freqs = np.array([fmin_pow, fmax_pow])) 
+            if fmin_pow==fmax_pow: # if single band, use tfr_multitaper
+                TBW = 2
+                pows = get_tfr_multitaper_power(eeg, np.array([fmin_pow]), np.array([fmin_pow])/2, TBW, time=[0,eeg_length])
+            else:
+                pows,freqs_done = get_multitaper_power(eeg, time=[0,eeg_length],freqs = np.array([fmin_pow, fmax_pow])) 
             # returns log(powers) evts X channels averaged over time
 
             # this finds consecutive timepoints with no change in power. 10 or more of these is enough to remove an event
@@ -999,17 +1016,17 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
         
         # can set a number. Here just grabbing all unique amplitudes:
         desired_amps = {dlist[0]['amplitude'] for dlist in evs_on.stim_params.to_list()} # {750} this was for PS2 to test Ethan Fig. 2 example
-        ## FOR PS3 ONLY ##...NOTE YOU HAVE TO CHANGE BURSTS TO PULSES BELOW
-        #desired_bursts = {stim_param} #{dlist[0]['burst_freq'] for dlist in evs_on.stim_params.to_list()} # PS3 has 3:8 Hz burst_freq
-        desired_pulses = {stim_param} # {dlist[0]['pulse_freq'] for dlist in evs_on.stim_params.to_list()} [100,200] for PS3
+        ## FOR PS3 ONLY ##...NOTE YOU HAVE TO CHANGE "PULSE" TO "BURST" in pulse_freq and desired_pulses below
+        desired_bursts = {stim_param} #{dlist[0]['burst_freq'] for dlist in evs_on.stim_params.to_list()} # PS3 has 3:8 Hz burst_freq
+#         desired_pulses = {stim_param} # {dlist[0]['pulse_freq'] for dlist in evs_on.stim_params.to_list()} [100,200] for PS3
         
         good_pre = np.zeros(evs_on.shape[0]); 
         for i,row in enumerate(evs_on.itertuples()): 
-            if row.stim_params[0]['amplitude'] in desired_amps and row.stim_params[0]['pulse_freq'] in desired_pulses:
+            if row.stim_params[0]['amplitude'] in desired_amps and row.stim_params[0]['burst_freq'] in desired_bursts:
                 good_pre[i] = True
         good_post = np.zeros(evs_off.shape[0])        
         for i,row in enumerate(evs_off.itertuples()): 
-            if row.stim_params[0]['amplitude'] in desired_amps and row.stim_params[0]['pulse_freq'] in desired_pulses:
+            if row.stim_params[0]['amplitude'] in desired_amps and row.stim_params[0]['burst_freq'] in desired_bursts:
                 good_post[i] = True 
         good_trials = np.logical_and(good_pre,good_post) # there's no reason these should differ, 
                                             #but just in case (since ttest_rel needs equal shape)        
@@ -1104,7 +1121,7 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
 
     fn = os.path.join(sub, #'compiled/PS3_NMA/'+sub,
                       sub+'_exp-'+exp+'_session-'+str(session)+'_'+str(fmin)+'-'+str(fmax)+'-fc_'+
-                      str(fmin_pow)+'-'+str(fmax_pow)+'-pow_pulse-'+str(stim_param)+'.p')            
+                      str(fmin_pow)+'-'+str(fmax_pow)+'-pow_burst-'+str(stim_param)+'.p')   # pow_pulse-         
 
     with open(fn,'wb') as f:
         pickle.dump({'sess_Ts':sess_Ts, 'stimbps':stimbps, 'Conn_Zs': Conn_Zs, 'Conn_Ps': Conn_Ps, 
