@@ -164,7 +164,27 @@ def get_tal_distmat(tal_struct):
                 dist_mat[j,i] = np.linalg.norm(e1 - e2, axis=0)    
     distmat = 1./np.exp(dist_mat/120.)
     
-    return distmat  
+    return distmat 
+
+def ptsa_to_mne(eegs,time_range): # convert ptsa to mne    
+    import mne
+    
+    sr = int(eegs.samplerate) #get samplerate    
+    eegs = eegs[:, :, :].transpose('event', 'channel', 'time') # make sure right order of names
+    
+    time = [x/1000 for x in time_range] # convert to s for MNE
+    clips = np.array(eegs[:, :, int(sr*time[0]):int(sr*time[1])])
+
+    mne_evs = np.empty([clips.shape[0], 3]).astype(int)
+    mne_evs[:, 0] = np.arange(clips.shape[0]) # at each timepoint
+    mne_evs[:, 1] = clips.shape[2] # 0
+    mne_evs[:, 2] = list(np.zeros(clips.shape[0]))
+    event_id = dict(resting=0)
+    tmin=0.0
+    info = mne.create_info([str(i) for i in range(eegs.shape[1])], sr, ch_types='eeg')  
+    
+    arr = mne.EpochsArray(np.array(clips), info, mne_evs, tmin, event_id)
+    return arr
     
 def get_multitaper_power(eegs, time, freqs):
     # note: must be in ptsa format!!
@@ -558,8 +578,7 @@ def PowerSpectra(subjects, electrodes, freqs, avg_ref=False, zscore=False, \
 
     is_string = isinstance(subjects,str)
     if is_string: # if just one string
-        subjects = [subjects]
-    #import ipdb; ipdb.set_trace()    
+        subjects = [subjects] 
     for sub in subjects: # for each subject
         df_sub = SubjectDataFrames(sub) # get their dataframe
         sub_rec_powers = np.zeros(len(freqs))
@@ -1003,7 +1022,6 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
 # #             np.save(filename,[pows,eeg]) # this takes too long          
 
         # Get bad electrodes (seizure onset/ictal)
-        
         badelecs = exclude_bad(sub, mont, just_bad=False)
         bad_filt = np.zeros(len(tal_struct))
         for idx, e in enumerate(tal_struct):
@@ -1033,7 +1051,6 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
         #T-test post vs. pre powers
         from scipy.stats import ttest_rel
         # mytrials = np.where(good_trials)[0] #mytrials = np.random.choice(mytrials, 50)
-        
         # t-test values for all electrodes between pre/post for each trial
         chan_T, p = ttest_rel(post_pows[good_trials==1, :], pre_pows[good_trials==1, :], axis=0, nan_policy='omit') 
         orig_T_stats = copy(chan_T) # for Fig. 2b

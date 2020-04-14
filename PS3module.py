@@ -456,16 +456,32 @@ def get_resting_events(evs,fmin,fmax):
             init_sr = int(reader.load("sources")['sample_rate'])
             
             orig_evs = exp_evs[(exp_evs['type']=='COUNTDOWN_START') & (exp_evs['session']==sess)]
-            rest_evs = copy(orig_evs) # store initial one then append next 9, 1 s chunks to it
-            for i in range(1, 10): 
+            rest_evs = copy(orig_evs) # store initial one then append next set of times to it
+            
+            fmin_temp = fmin; fmax_temp = fmax # going to change these for 3 hz only
+            if fmin == 3: # use 6, 1666 ms chunks to get 5 cycles in as spectral_connectivity suggests
+                split = 10/6
+                num_splits = 6
+                eeg_length = 10000/6
+                fmin_temp = 2.9; fmax_temp = 3.1 # the uneven division due to 10000/6 in spectral.py, 
+                # so setting these windows keeps that single band
+            elif fmin == 4: # use 8, 1250 ms chunks to get 5 cycles in as spectral_connectivity suggests
+                split = 1.250
+                num_splits = 8
+                eeg_length = 1250
+            else: # all others can use 1000 ms eeg chunks
+                split = 1.000
+                num_splits = 10  
+                eeg_length = 1000
+            for i in range(1, num_splits): 
                 rest_copy = copy(orig_evs)
-                rest_copy.eegoffset = rest_copy.eegoffset+init_sr*i
-                rest_evs = rest_evs.append(rest_copy, ignore_index=True)    
+                rest_copy.eegoffset = rest_copy.eegoffset+int(np.round(init_sr*split*i))
+                rest_evs = rest_evs.append(rest_copy, ignore_index=True) 
 
             #Use MNE to get connectivity for all 10, 1 s resting events during countdowns
             pairs = reader.load('pairs') # voltages across adjacent contacts
             try:  #some bipolar ENS subjects will have nonmatching EEG and pairs information
-                eeg = reader.load_eeg(events=rest_evs, rel_start=0, rel_stop=1000, scheme=pairs)  
+                eeg = reader.load_eeg(events=rest_evs, rel_start=0, rel_stop=eeg_length, scheme=pairs)  
                 eeg = eeg.to_mne()
                 print('Loaded eeg for '+str(len(eeg))+' events for Subject '+str(exp_evs.subject.iloc[0])+', Experiment '+exp+', Session '+str(sess))
                 if accum_eeg is None:
@@ -474,7 +490,7 @@ def get_resting_events(evs,fmin,fmax):
                     accum_eeg = mne.concatenate_epochs([accum_eeg,eeg])
             except:
                 try: 
-                    eeg = reader.load_eeg(events=rest_evs, rel_start=0, rel_stop=1000)
+                    eeg = reader.load_eeg(events=rest_evs, rel_start=0, rel_stop=eeg_length)
                     eeg = eeg.to_mne()
                     if len(pairs)!=eeg.shape[1]:                        
                         raise ValueError('pairs.json and loaded EEG do not match! Probably should not use.')
@@ -488,7 +504,7 @@ def get_resting_events(evs,fmin,fmax):
     mode = 'multitaper'
     #time_bandwidth_product = 4
     cons, freqs, times, n_epochs, n_tapers = spectral_connectivity(
-        accum_eeg, method=method, mode=mode, sfreq=init_sr, fmin=fmin, fmax=fmax,
+        accum_eeg, method=method, mode=mode, sfreq=init_sr, fmin=fmin_temp, fmax=fmax_temp,
         faverage=True, tmin=0.0, mt_adaptive=False, n_jobs=1, verbose=False) #,
         #mt_bandwidth=time_bandwidth_product)
     
