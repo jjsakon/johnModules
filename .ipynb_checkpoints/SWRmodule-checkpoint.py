@@ -196,6 +196,27 @@ def detectRipples(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
     
     return ripplelogic,iedlogic #,ripple_mstimes
 
+def downsampleBinary(array,factor):
+    # input should be trial X time binary matrix
+    array_save = np.array([])
+    if factor-int(factor)==0: # if an integer
+        for t in range(array.shape[0]):
+            array_save = superVstack(array_save,array[t].reshape(-1,2).mean(axis=1))
+    else: 
+        # when dividing by non-integer, this doesn't work yet. I think you need to expand 
+        # the array signal until the factor is an integer. e.g. if factor is 3.2 (which 
+        # happens for 1600/500) you need to expand the array you want to downsample by
+        # a factor of 5 first. Then you can make factor 16 and use this code:
+        # from: https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
+        temp = array[0]
+        R=1600/500
+        pad_size = 0
+        while int((temp.size+pad_size)/R)-(temp.size+pad_size)/R != 0:
+            pad_size+=1
+        padded = np.append(temp, np.zeros(pad_size)*np.NaN)
+        new = scipy.nanmean(padded.reshape(-1,R), axis=1)
+    return array_save
+
 def ptsa_to_mne(eegs,time_length): # in ms
     # convert ptsa to mne    
     import mne

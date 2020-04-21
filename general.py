@@ -6,12 +6,18 @@ def seFromProp(num_correct,trials):
     stderr = np.sqrt(num_correct*(1-num_correct/trials)/(trials-1)) / np.sqrt(trials)
     return stderr
 
-def findInd(idx): # note: np.where does this, but it returns an array and this returns a list
+def findInd(idx): # note: np.where does this, but it returns a tuple and this returns a list...actually now an array
     # get the indices when given boolean vector (like find function in matlab)
     idxs = [i for i,val in enumerate(idx) if val]
-    return idxs
+    return np.array(idxs)
 
-def findAinB(A,B):
+def findAinB(A,B): # this version works for lists and np arrays
+    temp = set(A)
+    import ipdb; ipdb.set_trace()
+    inds = [i for i, val in enumerate(B) if val in temp] 
+    return inds
+
+def findAinBlists(A,B):
     # get the indices for where first vector is found in second vector
     inds = []
     for first in A:
@@ -69,7 +75,6 @@ def getLogicalChunks(array):
     ends = []    
     for i in range(0, len(array)):
         if array[i] != 0:
-            #import ipdb; ipdb.set_trace()
             if not foundstart:
                 foundstart = True
                 startindex = i
