@@ -1,3 +1,4 @@
+# same as PS3_module but choosing only specific freqs in regression!!
 import pandas as pd
 import numpy as np
 from cmlreaders import CMLReader, get_data_index
@@ -13,6 +14,7 @@ from ptsa.data.filters import morlet
 from ptsa.data.filters import ButterworthFilter
 from general import *
 
+## functions ##
 
 def Log(s, logname):
     date = datetime.datetime.now().strftime('%F_%H-%M-%S')

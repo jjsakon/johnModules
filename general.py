@@ -1,6 +1,32 @@
 ## These are general .py programs written to be used across all programs ##
 import numpy as np
 
+def splitUpString(string,delimiter=''):
+    if delimiter is '':
+        split_array = np.array(list(map(float,string.split())))
+    else:
+        split_array = np.array(list(map(float,string.split(delimiter))))
+    return split_array
+
+def tscorePlot(mdl,yrange=7.5,names=None): 
+    # plot the tscores with 2 SEs shaded for model results
+    import matplotlib.pyplot as plt
+    if names is None: # need to add names for regression results without column names like MixedLMresults
+        try:
+            names = np.array(mdl.normalized_cov_params.columns)
+        except:
+            raise('You need some names for your xticks')
+    plt.subplots(1,1, figsize=(4,3))
+    xr = np.linspace(-.5,len(mdl.tvalues)-0.5,100)
+    twoSD = 1.96*np.ones(100)
+    plt.fill_between(xr,twoSD,-twoSD,alpha=0.1,color=[0,0,0])
+    xticks = np.arange(0,len(mdl.tvalues)-0.5)
+    plt.bar(xticks,mdl.tvalues)
+    ax = plt.gca(); ax.set_ylim((-yrange,yrange))
+    plt.ylabel('t-values')
+    plt.xticks(xticks,names,rotation=90)
+    plt.show()
+
 def seFromProp(num_correct,trials):
     # calculate standard error for proportions
     stderr = np.sqrt(num_correct*(1-num_correct/trials)/(trials-1)) / np.sqrt(trials)
@@ -11,14 +37,13 @@ def findInd(idx): # note: np.where does this, but it returns a tuple and this re
     idxs = [i for i,val in enumerate(idx) if val]
     return np.array(idxs)
 
-def findAinB(A,B): # this version works for lists and np arrays
+def findAinB(A,B): # find where A is in B. this version works for lists and np arrays
     temp = set(A)
-    import ipdb; ipdb.set_trace()
     inds = [i for i, val in enumerate(B) if val in temp] 
     return inds
 
 def findAinBlists(A,B):
-    # get the indices for where first vector is found in second vector
+    # gets indicies for A in B where B is a list of lists
     inds = []
     for first in A:
         temp_ind = findInd(first in sublist for sublist in B)
@@ -189,7 +214,7 @@ def bootstrap(data, bootnum=100, samples=None, bootfunc=None):
 
     # create empty boot array
     boot = np.empty(resultdims)
-
+    
     for i in range(bootnum):
         bootarr = np.random.randint(low=0, high=data.shape[0], size=samples)
         if bootfunc is None:

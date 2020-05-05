@@ -36,7 +36,13 @@ def LogDFException(row, e, logname):
     
 def LogException(e, logname):
     Log(e.__class__.__name__+', '+str(e)+'\n'+
-        ''.join(traceback.format_exception(type(e), e, e.__traceback__)), logname)    
+        ''.join(traceback.format_exception(type(e), e, e.__traceback__)), logname)  
+    
+def normFFT(eeg):
+    # gets you the frequency spectrum after the fft by removing mirrored signal and taking modulus
+    N = len(eeg)
+    fft_eeg = 1/N*np.abs(fft(eeg)[:N//2]) # should really normalize by Time/sample rate (e.g. 4 s of eeg/500 hz sampling=8)
+    return fft_eeg
     
 def get_bp_tal_struct(sub, montage, localization):
     
@@ -124,7 +130,9 @@ def get_tal_distmat(tal_struct):
     
     return distmat  
 
-def detectRipples(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
+# def detectRipplesHamming()
+
+def detectRipplesButter(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
     ## detect ripples ##
     # input: hilbert amp from 80-120 Hz, hilbert amp from 250-500 Hz, raw eeg. All trials X duration (ms),mstime of each FR event
     # output: ripplelogic and iedlogic, which are trials X duration masks of ripple presence 
@@ -137,7 +145,7 @@ def detectRipples(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
     ripmaxthresh = 3 # ripple event must meet this maximum
     ied_thresh = 5 # from Staresina, NN 2015 IED rejection
     ripple_separation = 15/sr_factor # from Roux, NN 2017
-    artifact_buffer = int(200/sr_factor)
+    artifact_buffer = 100 # per Vaz et al 2019 
 
     num_trials = eeg_mne.shape[0]
     eeg_rip_z = stats.zscore(eeg_rip) # note that Vaz et al averaged over time bins too, so axis=None instead of 0
@@ -221,7 +229,7 @@ def ptsa_to_mne(eegs,time_length): # in ms
     # convert ptsa to mne    
     import mne
     
-    sr = int(eegs.samplerate) #get samplerate    
+    sr = int(np.round(eegs.samplerate)) #get samplerate...round 1st since get like 499.7 for some reason  
     eegs = eegs[:, :, :].transpose('event', 'channel', 'time') # make sure right order of names
     
     time = [x/1000 for x in time_length] # convert to s for MNE
@@ -306,171 +314,6 @@ def bootPSTH(point_array,binsize,smoothing_triangle,sr,start_offset): # same as 
     #smoothed = fastSmooth(norm_count[0],5) # use triangular instead, although this gives similar answer
     PSTH = triangleSmooth(norm_count[0],smoothing_triangle)
     return PSTH
-    
-def get_multitaper_power(eegs, time, freqs):
-    # note: must be in ptsa format!!
-    from ptsa.data.timeseries import TimeSeriesX
-    import mne   
-    
-    time_length = time # how long is eeg?
-    arr = ptsa_to_mne(eegs,time_length)
-    
-    #Use MNE for multitaper power
-    pows, fdone = mne.time_frequency.psd_multitaper(arr, fmin=freqs[0], fmax=freqs[-1], tmin=0.0,
-                                                       verbose=False);
-
-    pows = np.mean(np.log10(pows), 2) #will be shaped n_epochs, n_channels
-    
-    return pows,fdone # powers and freq. done
-
-def find_sat_events(eegs,acceptable_saturations):
-    #Return array of chans x events with 1s where saturation is found   
-    
-    def zero_runs(a): # this finds strings of zero differences...which is indicative of eeg at ceiling
-        a = np.array(a)
-        # Create an array that is 1 where a is 0, and pad each end with an extra 0.
-        iszero = np.concatenate(([0], np.equal(a, 0).view(np.int8), [0]))
-        absdiff = np.abs(np.diff(iszero))
-        # Runs start and end where absdiff is 1.
-        ranges = np.where(absdiff == 1)[0].reshape(-1, 2)
-        return ranges
-    
-    sat_events = np.zeros([eegs.shape[0], eegs.shape[1]])
-    
-    zero_ct = 0
-    for i in range(eegs.shape[0]):
-        for j in range(eegs.shape[1]):
-            ts = eegs[i, j]
-            zr = zero_runs(np.diff(np.array(ts)))
-            numzeros = zr[:, 1]-zr[:, 0]
-            if np.sum(ts)==0:
-                zero_ct+=1
-            if (numzeros>acceptable_saturations).any():
-                sat_events[i, j] = 1
-                continue
-    print('Number of electrodes X events with all 0s: '+str(zero_ct))    
-    print('Number of saturated electrodes X events: '+str(np.sum(sat_events)))
-    return sat_events.astype(bool)
-
-# from mne_pipeline_refactored
-def exclude_bad(s, montage, just_bad=None):
-    from glob import glob
-    try:
-#         # shouldn't actually be any different if montage isn't 0... so remove this
-#         if montage!=0:  
-#             fn = 'home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'_'+str(montage)+'.txt'
-#             # copied this over from:
-#             #fn = '/scratch/pwanda/electrode_categories/electrode_categories_'+s+'_'+str(montage)+'.txt'
-#         else:
-        if len(glob('/data/eeg/'+s+'/docs/electrode_categories.txt'))>0:
-            fn = '/data/eeg/'+s+'/docs/electrode_categories.txt'
-        else:
-            print("Didn't find electrode_categories.txt in data/eeg...so find in folder stolen from Paul")
-            if len(glob('/home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'.txt'))>0:
-                fn = '/home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'.txt'
-                #fn = '/scratch/pwanda/electrode_categories/electrode_categories_'+s+'.txt'
-            elif len(glob('/home1/john/data/eeg/electrode_categories/'+s+'_electrode_categories.txt'))>0:
-                fn = '/home1/john/data/eeg/electrode_categories/'+s+'_electrode_categories.txt'
-                #fn = '/scratch/pwanda/electrode_categories/'+s+'_electrode_categories.txt'
-            else:
-                print("Didn't find any electrode_categories! Even in john/data/eeg/electrode_categories folder")
-
-        with open(fn, 'r') as fh:
-            lines = [mystr.replace('\n', '') for mystr in fh.readlines()]
-    except:
-        print("Didn't load montage file correctly from exclude_bad for subject "+s+', montage = '+str(montage))
-        lines = []
-        
-    if just_bad is True:
-        bidx=len(lines)
-        try:
-            bidx = [s.lower().replace(':', '').strip() for s in lines].index('bad electrodes')
-        except:
-            try:
-                bidx = [s.lower().replace(':', '').strip() for s in lines].index('broken leads')
-            except:
-                lines = []
-        lines = lines[bidx:]
-    
-    return lines
-    
-def get_wm_dist(s, tal_struct, stimbp):
-    import nibabel
-    
-    #Get distance to nearest white matter
-    coordsR, faces = nibabel.freesurfer.io.read_geometry('/data/eeg/freesurfer/subjects/'+s+'/surf/rh.white')
-    coordsL, faces = nibabel.freesurfer.io.read_geometry('/data/eeg/freesurfer/subjects/'+s+'/surf/lh.white')
-    coords = np.vstack([coordsR, coordsL])
-    
-    xyz = [tal_struct[stimbp]['atlases']['ind']['x'], tal_struct[stimbp]['atlases']['ind']['y'], tal_struct[stimbp]['atlases']['ind']['z']]
-
-    coords_diff = np.array([coords[:, 0]-xyz[0], coords[:, 1]-xyz[1], coords[:, 2]-xyz[2]]).T
-    coords_dist = np.sqrt(np.sum(coords_diff**2, 1))
-    dist_nearest_wm = np.min(coords_dist)
-    
-    return dist_nearest_wm
-
-def resid_adjmat(distmat, conn):
-    from sklearn.linear_model import LinearRegression
-    from scipy.special import logit
-
-    finite_idxs = np.where(np.logical_and(np.isfinite(distmat), np.isfinite(conn))) # conn is already logit'd
-    X = distmat[finite_idxs]
-    y = conn[finite_idxs]
-
-    #Fit the model
-    mdl = LinearRegression(fit_intercept=True, normalize=False)
-    X = X[:, np.newaxis]
-    mdl.fit(X, y);
-
-    #Get residuals
-    preds = mdl.predict(X)
-    resid_fc = y-preds
-    
-    resid_conn = np.empty(conn.shape); resid_conn[:] = np.nan
-    resid_conn[finite_idxs] = resid_fc
-
-    return resid_conn # return logit transformed coherences for all channels
-
-def resid_fc(distmat, conn, stimbp):
-    from sklearn.linear_model import LinearRegression
-    from scipy.special import logit
-    
-    #Residualize functional connectivity with distance
-    X = distmat[stimbp] #distances should already be exponential/normalized
-    y = conn[stimbp]
-
-    #Fit the model
-    mdl = LinearRegression(fit_intercept=True, normalize=False)
-    X = X[np.isfinite(y), np.newaxis]
-    mdl.fit(X, y[np.isfinite(y)]);
-
-    #Get residuals
-    preds = mdl.predict(X)
-    preds = np.insert(preds, stimbp, np.nan) # need to put a nan in at stim channel 
-    resid_fc = y-preds
-    
-    return resid_fc #return residuals of fc after regressing out distance
-
-def residTstat(distmat, sess_Ts):
-    from sklearn.linear_model import LinearRegression
-    from scipy.special import logit
-    
-    #Residualize functional connectivity with distance
-    X = distmat #distances should already be exponential/normalized
-    y = sess_Ts
-
-    #Fit the model
-    mdl = LinearRegression(fit_intercept=True, normalize=False)
-    X = X[np.isfinite(y), np.newaxis]
-    y = y[np.isfinite(y)]
-    mdl.fit(X, y);
-
-    #Get residuals
-    preds = mdl.predict(X)     
-    resid_stim = y-preds
-    
-    return resid_stim #return logit transformed coherences but only for stim channel
 
 def StartFig():
     test = plt.figure();
@@ -512,70 +355,6 @@ def GetElectrodes(sub,start,stop):
     enc_evs = evs[evs.type=='WORD']
     eeg = reader.load_eeg(events=enc_evs, rel_start=start, rel_stop=stop, clean=True)
     return eeg.to_ptsa().channel.values
-
-def get_resting_events(evs,fmin,fmax):
-    from copy import copy
-    import mne
-    #Use the FR countdown period to establish baseline events, spaced every second
-    
-    # need to load reader in here separately for each task
-    exp_list = evs.experiment.unique()
-    accum_eeg = None    
-    for exp in exp_list:
-        exp_evs = evs[evs['experiment']==exp]
-        sess_list = exp_evs.session.unique()
-        for sess in sess_list: # gotta do this since it's POSSIBLE sampling rate could change
-            # note: montage and localization never change within session (I don't think!)            
-            reader = CMLReader(exp_evs.subject.iloc[0], exp, sess, 
-                               montage=exp_evs.montage.iloc[0], localization=exp_evs.localization.iloc[0])
-
-            #Get samplerate to do eegoffsets
-            init_sr = int(reader.load("sources")['sample_rate'])
-            
-            orig_evs = exp_evs[(exp_evs['type']=='COUNTDOWN_START') & (exp_evs['session']==sess)]
-            rest_evs = copy(orig_evs) # store initial one then append next 9, 1 s chunks to it
-            for i in range(1, 10): 
-                rest_copy = copy(orig_evs)
-                rest_copy.eegoffset = rest_copy.eegoffset+init_sr*i
-                rest_evs = rest_evs.append(rest_copy, ignore_index=True)    
-
-            #Use MNE to get connectivity for all 10, 1 s resting events during countdowns
-            pairs = reader.load('pairs') # voltages across adjacent contacts
-            try:  #some bipolar ENS subjects will have nonmatching EEG and pairs information
-                eeg = reader.load_eeg(events=rest_evs, rel_start=0, rel_stop=1000, scheme=pairs)  
-                eeg = eeg.to_mne()
-                print('Loaded eeg for '+str(len(eeg))+' events for Subject '+str(exp_evs.subject.iloc[0])+', Experiment '+exp+', Session '+str(sess))
-                if accum_eeg is None:
-                    accum_eeg = eeg
-                elif accum_eeg is not None:
-                    accum_eeg = mne.concatenate_epochs([accum_eeg,eeg])
-            except:
-                try: 
-                    eeg = reader.load_eeg(events=rest_evs, rel_start=0, rel_stop=1000)
-                    eeg = eeg.to_mne()
-                    if len(pairs)!=eeg.shape[1]:                        
-                        raise ValueError('pairs.json and loaded EEG do not match! Probably should not use.')
-                except:
-                    print(str(exp_evs.subject.iloc[0])+', Experiment '+exp+', Session '+str(sess)+
-                                     ": from PS3mod split EEG filenames don't seem to match what are in the events")
-                    pass
-    
-    from mne.connectivity import spectral_connectivity
-    method = 'coh'
-    mode = 'multitaper'
-    #time_bandwidth_product = 4
-    cons, freqs, times, n_epochs, n_tapers = spectral_connectivity(
-        accum_eeg, method=method, mode=mode, sfreq=init_sr, fmin=fmin, fmax=fmax,
-        faverage=True, tmin=0.0, mt_adaptive=False, n_jobs=1, verbose=False) #,
-        #mt_bandwidth=time_bandwidth_product)
-    
-    #Symmetrize and save average network
-    mu = np.mean(cons, 2)
-    mu_full = np.nansum(np.array([mu, mu.T]), 0)
-    mu_full[np.diag_indices_from(mu_full)] = 0.0
-    #np.save(self.root+''+self.s+'/'+self.s+'_baseline10trials_network_'+str(self.band)+'.npy', mu_full)
-        
-    return mu_full
 
 def MakeLocationFilter(scheme, location):
     return [location in s for s in [s if s else '' for s in scheme.iloc()[:]['ind.region']]]

@@ -9,6 +9,7 @@ import functools
 import datetime
 import scipy
 
+
 from ptsa.data.filters import morlet
 from ptsa.data.filters import ButterworthFilter
 from general import *
@@ -122,7 +123,7 @@ def findStimbp(evs_on,sub,session,tal_struct,exp):
         if stim_pair==ch_pair: # if the anode/cathode pair were recorded from (not always the case!)  
             stimbp = idx
     if np.isnan(stimbp): # if anode/cathode pair don't have a site...just grab first from anode       
-        stimbp = findAinB([stim_pair[0]],chs)[0]
+        stimbp = findAinBlists([stim_pair[0]],chs)[0]
         print('stimbp set to: '+str(stimbp)+', since anode/cathode pair not in tal_struct for '+sub
               +', '+str(session))
     return stimbp,stim_electrode_change 
