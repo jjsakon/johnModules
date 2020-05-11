@@ -39,6 +39,7 @@ def LogException(e, logname):
         ''.join(traceback.format_exception(type(e), e, e.__traceback__)), logname)  
     
 def normFFT(eeg):
+    from scipy import fft
     # gets you the frequency spectrum after the fft by removing mirrored signal and taking modulus
     N = len(eeg)
     fft_eeg = 1/N*np.abs(fft(eeg)[:N//2]) # should really normalize by Time/sample rate (e.g. 4 s of eeg/500 hz sampling=8)
@@ -130,7 +131,93 @@ def get_tal_distmat(tal_struct):
     
     return distmat  
 
-# def detectRipplesHamming()
+def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
+    # detect ripples similar to with Butterworth, but using Norman et al 2019 algo (based on Stark 2014 algo). Description:
+#      Then Hilbert, clip extreme to 4 SD, square this clipped, smooth w/ Kaiser FIR low-pass filter with 40 Hz cutoff,
+#      mean and SD computed across entire experimental duration to define the threshold for event detection
+#      Events from original (squared but unclipped) signal >4 SD above baseline were selected as candidate SWR events. 
+#      Duration expanded until ripple power <2 SD. Events <20 ms or >200 ms excluded. Adjacent events <30 ms separation (peak-to-peak) merged.
+    from scipy.signal import firwin,filtfilt,kaiserord
+    sr_factor = 1000/sr
+    ripple_min = 15/sr_factor # convert each to ms
+    ripple_max = 250/sr_factor
+    min_separation = 30/sr_factor # peak to peak
+    orig_eeg_rip = copy(eeg_rip)
+    clip_SD = 4*np.std(eeg_rip)
+    eeg_rip[eeg_rip>clip_SD] = clip_SD # clip at 4SD
+    eeg_rip = eeg_rip**2 # square
+    
+    # FIR lowpass 40 hz filter for Malach dtection algo
+    nyquist = sr/2
+    ntaps40, beta40 = kaiserord(40, trans_width/nyquist)
+    kaiser_40lp_filter = firwin(ntaps40, cutoff=40, window=('kaiser', beta40), scale=False, nyq=nyquist, pass_zero='lowpass')
+    
+    eeg_rip = filtfilt(kaiser_40lp_filter,1.,eeg_rip)
+    mean_detection_thresh = np.mean(eeg_rip)
+    std_detection_thresh = np.std(eeg_rip)
+    
+    # now, find candidate events (>mean+4SD) and expand to >2SD periods around those events
+    orig_eeg_rip = orig_eeg_rip**2
+    candidate_thresh = mean_detection_thresh+4*std_detection_thresh
+    expansion_thresh = mean_detection_thresh+2*std_detection_thresh
+    ripplelogic = orig_eeg_rip >= candidate_thresh
+    ripplelogic[iedlogic==1] = 0 # remove IEDs detected from Vaz algo...maybe should do this after expansion to 2SD??
+    # expand out to 2SD
+    num_trials = ripplelogic.shape[0]
+    trial_length = ripplelogic.shape[1]
+    for trial in range(num_trials):
+        ripplelogictrial = ripplelogic[trial]
+        starts,ends = getLogicalChunks(ripplelogictrial)
+        data_trial = orig_eeg_rip[trial]
+        for i,start in enumerate(starts):
+            current_time = 0
+            while data_trial[start+current_time]>=expansion_thresh:
+                if (start+current_time)==-1:
+                    break
+                else:
+                    current_time -=1
+            starts[i] = start+current_time+1
+        for i,end in enumerate(ends):
+            current_time = 0
+            while data_trial[end+current_time]>=expansion_thresh:
+                if (end+current_time)==trial_length-1:
+                    break
+                else:
+                    current_time +=1
+            ends[i] = end+current_time
+            
+        # remove any duplicates from starts and ends
+        starts = np.array(starts); ends = np.array(ends)
+        _,start_idxs = np.unique(starts, return_index=True)
+        _,end_idxs = np.unique(ends, return_index=True)
+        starts = starts[start_idxs & end_idxs]
+        ends = ends[start_idxs & end_idxs]
+
+        # remove ripples <min or >max length
+        lengths = ends-starts
+        ripple_keep = (lengths > ripple_min) & (lengths < ripple_max)
+        starts = starts[ripple_keep]; ends = ends[ripple_keep]
+
+        # get peak times of each ripple to combine those < 30 ms separated peak-to-peak
+        if len(starts)>1:
+            max_idxs = np.zeros(len(starts))
+            for ripple in range(len(starts)):
+                max_idxs[ripple] = starts[ripple] + np.argmax(data_trial[starts[ripple]:ends[ripple]])                    
+            overlappers = np.where(np.diff(max_idxs)<min_separation)
+
+            if len(overlappers[0])>0:
+                ct = 0
+                for overlap in overlappers:
+                    ends = np.delete(ends,overlap-ct)
+                    starts = np.delete(starts,overlap+1-ct)
+                    ct+=1 # so each time one is removed can still remove the next overlap
+                
+        # turn starts/ends into a logical array and replace the trial in ripplelogic
+        temp_trial = np.zeros(trial_length)
+        for i in range(len(starts)):
+            temp_trial[starts[i]:ends[i]]=1
+        ripplelogic[trial] = temp_trial # place it back in
+        return ripplelogic
 
 def detectRipplesButter(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
     ## detect ripples ##
