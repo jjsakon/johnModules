@@ -131,6 +131,23 @@ def get_tal_distmat(tal_struct):
     
     return distmat  
 
+def getStartEndArrays(ripple_array,sr):
+    # get separate arrays of SWR starts and SWR ends from the full binarized array
+    sr_factor = (1000/sr)
+    start_array = np.zeros((ripple_array.shape))
+    end_array = np.zeros((ripple_array.shape))
+    num_trials = ripple_array.shape[0]
+    for trial in range(num_trials):
+        ripplelogictrial = ripple_array[trial]
+        starts,ends = getLogicalChunks(ripplelogictrial)
+        temp_row = np.zeros(len(ripplelogictrial))
+        temp_row[starts] = 1
+        start_array[trial] = temp_row # time when each SWR starts
+        temp_row = np.zeros(len(ripplelogictrial))
+        temp_row[ends] = 1
+        end_array[trial] = temp_row
+    return start_array,end_array
+
 def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     # detect ripples similar to with Butterworth, but using Norman et al 2019 algo (based on Stark 2014 algo). Description:
 #      Then Hilbert, clip extreme to 4 SD, square this clipped, smooth w/ Kaiser FIR low-pass filter with 40 Hz cutoff,
@@ -139,8 +156,8 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
 #      Duration expanded until ripple power <2 SD. Events <20 ms or >200 ms excluded. Adjacent events <30 ms separation (peak-to-peak) merged.
     from scipy.signal import firwin,filtfilt,kaiserord
     sr_factor = 1000/sr
-    ripple_min = 15/sr_factor # convert each to ms
-    ripple_max = 250/sr_factor
+    ripple_min = 20/sr_factor #15/sr_factor # convert each to ms
+    ripple_max = 200/sr_factor #250/sr_factor
     min_separation = 30/sr_factor # peak to peak
     orig_eeg_rip = copy(eeg_rip)
     clip_SD = 4*np.std(eeg_rip)
@@ -217,7 +234,7 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
         for i in range(len(starts)):
             temp_trial[starts[i]:ends[i]]=1
         ripplelogic[trial] = temp_trial # place it back in
-        return ripplelogic
+    return ripplelogic
 
 def detectRipplesButter(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
     ## detect ripples ##
@@ -306,9 +323,11 @@ def downsampleBinary(array,factor):
         temp = array[0]
         R=1600/500
         pad_size = 0
+        import ipdb; ipdb.set_trace()
         while int((temp.size+pad_size)/R)-(temp.size+pad_size)/R != 0:
             pad_size+=1
         padded = np.append(temp, np.zeros(pad_size)*np.NaN)
+        print('Need to fix non-integer downsampling!')
         new = scipy.nanmean(padded.reshape(-1,R), axis=1)
     return array_save
 
@@ -431,7 +450,7 @@ def CMLReadDFRow(row):
     '''
     rd = row._asdict() # this takes df and takes values from 1 row as a dict
     return CMLReader(rd['subject'], rd['experiment'], rd['session'], \
-                     rd['montage'], rd['localization'])
+                     montage=rd['montage'], localization=rd['localization'])
     # dirty secret: Readers needs: eegoffset, experiment, subject, and eegfile...but really should
     # pass in sessions since sampling rate could theoretically change...
 

@@ -1,6 +1,11 @@
 ## These are general .py programs written to be used across all programs ##
 import numpy as np
 
+def nameAsString(string):
+    for k, v in list(locals().iteritems()):
+         if v is string:
+            name_as_str = k
+    return name_as_str
 def splitUpString(string,delimiter=''):
     if delimiter is '':
         split_array = np.array(list(map(float,string.split())))
