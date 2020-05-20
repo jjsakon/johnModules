@@ -13,6 +13,34 @@ def splitUpString(string,delimiter=''):
         split_array = np.array(list(map(float,string.split(delimiter))))
     return split_array
 
+def plotHistoBar(values,start,end,bin_size,tick_range=[],normalize=False):
+    # properly plot a histogram (with the values shown in the current bins!)
+    # input: values: what to create histogram of
+    #        start, end, and bin_size: numbers to define an np.arange
+    #        normalize: True if you want proportion out of 1
+    #        tick_range: np.arange where you wanted labeled ticks
+    import matplotlib.pyplot as plt
+    bins = np.arange(start,end,bin_size)
+    hist = np.histogram(values,bins)
+    if normalize == True:
+        yvalues = hist[0]/sum(hist[0])
+    else:
+        yvalues = hist[0]
+    xr = (bins[1:]+bins[:-1])/2
+    ax = plt.bar(xr,yvalues,width=0.8*bin_size)
+    
+    if tick_range == []: 
+        tick_range = bins
+    
+    # get ticks
+    ticks = []
+    wanted_ticks = np.around(tick_range,3) # for some reason arange loses precision sometimes
+    for tick in bins:
+        if tick in wanted_ticks:
+            ticks.append(tick)
+    tick_mask = np.arange(start,len(bins),len(tick_range)+1) # is len(tick_range)+1 universal?
+    plt.xticks(xr[tick_mask]-bin_size/2,ticks) # might have to check 0.5 being universal?
+
 def tscorePlot(mdl,yrange=7.5,names=None): 
     # plot the tscores with 2 SEs shaded for model results
     import matplotlib.pyplot as plt
@@ -31,6 +59,15 @@ def tscorePlot(mdl,yrange=7.5,names=None):
     plt.ylabel('t-values')
     plt.xticks(xticks,names,rotation=90)
     plt.show()
+    
+def csvWriter(lists,filename):
+    # write lists of info into separate lines of comma delmited format for opening in excel
+    import csv
+    with open(str(filename)+'.csv', 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',', # comma separate
+                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        for t in lists:
+            csvwriter.writerow(t)
 
 def seFromProp(num_correct,trials):
     # calculate standard error for proportions

@@ -156,8 +156,8 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
 #      Duration expanded until ripple power <2 SD. Events <20 ms or >200 ms excluded. Adjacent events <30 ms separation (peak-to-peak) merged.
     from scipy.signal import firwin,filtfilt,kaiserord
     sr_factor = 1000/sr
-    ripple_min = 20/sr_factor #15/sr_factor # convert each to ms
-    ripple_max = 200/sr_factor #250/sr_factor
+    ripple_min = 20/sr_factor # convert each to ms
+    ripple_max = 250/sr_factor #200/sr_factor
     min_separation = 30/sr_factor # peak to peak
     orig_eeg_rip = copy(eeg_rip)
     clip_SD = 4*np.std(eeg_rip)
@@ -312,23 +312,16 @@ def downsampleBinary(array,factor):
     # input should be trial X time binary matrix
     array_save = np.array([])
     if factor-int(factor)==0: # if an integer
-        for t in range(array.shape[0]):
+        for t in range(array.shape[0]): #from https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
             array_save = superVstack(array_save,array[t].reshape(-1,2).mean(axis=1))
-    else: 
-        # when dividing by non-integer, this doesn't work yet. I think you need to expand 
-        # the array signal until the factor is an integer. e.g. if factor is 3.2 (which 
-        # happens for 1600/500) you need to expand the array you want to downsample by
-        # a factor of 5 first. Then you can make factor 16 and use this code:
-        # from: https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
-        temp = array[0]
-        R=1600/500
-        pad_size = 0
-        import ipdb; ipdb.set_trace()
-        while int((temp.size+pad_size)/R)-(temp.size+pad_size)/R != 0:
-            pad_size+=1
-        padded = np.append(temp, np.zeros(pad_size)*np.NaN)
-        print('Need to fix non-integer downsampling!')
-        new = scipy.nanmean(padded.reshape(-1,R), axis=1)
+    else:
+        # when dividing by non-integer, can just use FFT and round to get new sampling
+        from scipy.signal import resample
+        if array.shape[1]/factor-int(array.shape[1]/factor)!=0:
+            print('Did not get whole number array for downsampling')
+        new_sampling = int(array.shape[1]/factor)
+        for t in range(array.shape[0]):
+            array_save = superVstack(array_save,np.round(resample(array[t],new_sampling)))
     return array_save
 
 def ptsa_to_mne(eegs,time_length): # in ms
