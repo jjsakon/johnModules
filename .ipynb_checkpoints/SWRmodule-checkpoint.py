@@ -313,7 +313,7 @@ def downsampleBinary(array,factor):
     array_save = np.array([])
     if factor-int(factor)==0: # if an integer
         for t in range(array.shape[0]): #from https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
-            array_save = superVstack(array_save,array[t].reshape(-1,2).mean(axis=1))
+            array_save = superVstack(array_save,array[t].reshape(-1,int(factor)).mean(axis=1))
     else:
         # when dividing by non-integer, can just use FFT and round to get new sampling
         from scipy.signal import resample

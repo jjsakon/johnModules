@@ -13,14 +13,15 @@ def splitUpString(string,delimiter=''):
         split_array = np.array(list(map(float,string.split(delimiter))))
     return split_array
 
-def plotHistoBar(values,start,end,bin_size,tick_range=[],normalize=False):
+def plotHistoBar(values,start,end,bin_size,tick_range_divisor=1,normalize=False):
+    # e.g. plotHistoBar(lengths,0,0.2,0.01,tick_range=np.arange(0,0.2,0.05),normalize=True)
     # properly plot a histogram (with the values shown in the current bins!)
     # input: values: what to create histogram of
     #        start, end, and bin_size: numbers to define an np.arange
     #        normalize: True if you want proportion out of 1
     #        tick_range: np.arange where you wanted labeled ticks
     import matplotlib.pyplot as plt
-    bins = np.arange(start,end,bin_size)
+    bins = np.arange(start,end+bin_size+bin_size/1000,bin_size) # added bin+0.001 to show last bin and last tick
     hist = np.histogram(values,bins)
     if normalize == True:
         yvalues = hist[0]/sum(hist[0])
@@ -29,17 +30,18 @@ def plotHistoBar(values,start,end,bin_size,tick_range=[],normalize=False):
     xr = (bins[1:]+bins[:-1])/2
     ax = plt.bar(xr,yvalues,width=0.8*bin_size)
     
-    if tick_range == []: 
-        tick_range = bins
-    
     # get ticks
+    wanted_ticks = np.arange(bins[0],bins[-1]+bin_size/1000,bin_size*tick_range_divisor)
+    wanted_ticks = np.around(wanted_ticks,3) # for some reason arange loses precision sometimes
     ticks = []
-    wanted_ticks = np.around(tick_range,3) # for some reason arange loses precision sometimes
+    has_ticks = []
     for tick in bins:
         if tick in wanted_ticks:
             ticks.append(tick)
-    tick_mask = np.arange(start,len(bins),len(tick_range)+1) # is len(tick_range)+1 universal?
-    plt.xticks(xr[tick_mask]-bin_size/2,ticks) # might have to check 0.5 being universal?
+            has_ticks.append(True)
+        else:
+            has_ticks.append(False)
+    plt.xticks(xr[has_ticks[:-1]]-bin_size/2,ticks) # [:-1 since took midpoints to get xr above]
 
 def tscorePlot(mdl,yrange=7.5,names=None): 
     # plot the tscores with 2 SEs shaded for model results
