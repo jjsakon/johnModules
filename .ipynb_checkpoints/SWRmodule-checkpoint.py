@@ -21,12 +21,15 @@ def Log(s, logname):
         logfile.write(output+'\n')
 
 def LogDFExceptionLine(row, e, logname):
-    exc_type, exc_obj, exc_tb = sys.exc_info()
-    line_num = exc_tb.tb_lineno
-    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-    
     rd = row._asdict()
-    Log('DF Exception: Sub: '+str(rd['subject'])+', Sess: '+str(rd['session'])+\
+    if type(e) is str: # if it's just a string then this was not an Exception I just wanted to print my own error
+        Log('DF Exception: Sub: '+str(rd['subject'])+', Sess: '+str(rd['session'])+\
+        ', Manual error, '+e+', file: , line no: XXX', logname)
+    else: # if e is an exception then normal print to .txt log
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        line_num = exc_tb.tb_lineno
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        Log('DF Exception: Sub: '+str(rd['subject'])+', Sess: '+str(rd['session'])+\
         ', '+e.__class__.__name__+', '+str(e)+', file: '+fname+', line no: '+str(line_num), logname)
     
 def LogDFException(row, e, logname):
