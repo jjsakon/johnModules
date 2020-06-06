@@ -246,7 +246,7 @@ def find_sat_events(eegs,acceptable_saturations):
     print('Number of saturated electrodes X events: '+str(np.sum(sat_events)))
     return sat_events.astype(bool)
 
-# from mne_pipeline_refactored
+# from Ethan's mne_pipeline_refactored script
 def exclude_bad(s, montage, just_bad=None):
     from glob import glob
     try:

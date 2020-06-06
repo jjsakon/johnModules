@@ -134,6 +134,22 @@ def get_tal_distmat(tal_struct):
     
     return distmat  
 
+def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
+    if remove_soz_ictal == True:
+        bad_elecs = elecs_cat['bad_channel'] + elecs_cat['soz'] + elecs_cat['interictal']
+    else:
+        bad_elecs = elecs_cat['bad_channel']
+    bad_bp_mask = np.zeros(len(tal_struct))
+    for idx,tal_row in enumerate(tal_struct):
+        elec_labels = tal_row['tagName'].split('-')
+        # if there are dashes in the monopolar elec names, need to fix that
+        if (len(elec_labels) > 2) & (len(elec_labels) % 2 == 0): # apparently only one of these so don't need an else
+            n2 = int(len(elec_labels)/2)
+            elec_labels = ['-'.join(elec_labels[0:n2]), '-'.join(elec_labels[n2:])]
+        if elec_labels[0] in bad_elecs or elec_labels[1] in bad_elecs:
+            bad_bp_mask[idx] = 1
+    return bad_bp_mask
+
 def getStartEndArrays(ripple_array,sr):
     # get separate arrays of SWR starts and SWR ends from the full binarized array
     sr_factor = (1000/sr)
@@ -176,13 +192,15 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     mean_detection_thresh = np.mean(eeg_rip)
     std_detection_thresh = np.std(eeg_rip)
     
-    # now, find candidate events (>mean+4SD) and expand to >2SD periods around those events
+    # now, find candidate events (>mean+4SD) 
     orig_eeg_rip = orig_eeg_rip**2
     candidate_thresh = mean_detection_thresh+4*std_detection_thresh
     expansion_thresh = mean_detection_thresh+2*std_detection_thresh
     ripplelogic = orig_eeg_rip >= candidate_thresh
-    ripplelogic[iedlogic==1] = 0 # remove IEDs detected from Vaz algo...maybe should do this after expansion to 2SD??
-    # expand out to 2SD
+    # remove IEDs detected from Vaz algo...maybe should do this after expansion to 2SD??
+    ripplelogic[iedlogic==1] = 0 
+    
+    # expand out to 2SD around surviving events
     num_trials = ripplelogic.shape[0]
     trial_length = ripplelogic.shape[1]
     for trial in range(num_trials):
@@ -576,310 +594,3 @@ def SubjectStatTable(subjects):
         raise
     
     return table    
-
-def get_stim_events(evs,sessions): #sub, task, montage=0):
-    
-    # this doesn't do anything anymore I think. I do through rows of dataframes so not very useful
-    # could maybe check to make sure anode and cathode have same numbers
-    
-    evs_on = evs[evs['type']=='STIM_ON']
-    
-    #Reorganize sessions around stim sites
-    #sessions = reader.sessions(subject=sub, experiment=task, montage=montage)
-    sess_tags = []
-    for i in range(len(evs_on)):
-        stimtag = str(evs_on.iloc[i].stim_params[0]['anode_number'])+'-'+str(evs_on.iloc[i].stim_params[0]['cathode_number'])
-        sess_tags.append(stimtag)
-    sess_tags = np.array(sess_tags)
-    if len(np.unique(sess_tags))<=len([sessions]):
-        session_array = evs_on['session']
-    else:
-        session_array = np.empty(len(evs_on))
-        for idx, s in enumerate(np.unique(sess_tags)):
-            session_array[sess_tags==s] = int(idx)
-    session_array = np.unique(session_array)
-    
-    return evs_on, session_array
-
-def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, fmax_pow):
-    
-    import pickle
-    contact_array = np.array(['dummy']) # array of all locations
-    import statsmodels.api as sm 
-
-    # accumlate stats across sessions
-    sess_Ts = []; stimbps = []
-    Conn_Zs = []; Conn_Ps = []
-    regs = []; tal_structs = []
-    subjects = []; sessions = []
-    good_chans = []
-    
-    print('start run')
-    
-    try:
-        # get contacts for each session
-        reader = CMLReadDFRow(row)
-        contacts = reader.load('contacts') # actual electrodes
-        contact_array = np.append(contact_array,contacts['avg.region'].unique()) 
-
-        # get bipolar pairs
-        sub = row.subject
-        mont = int(row.montage)        
-        loc = int(row.localization)
-        exp = row.experiment
-        session = row.session
-        evs = reader.load('events')            
-
-        #evs_on, session_array = get_stim_events(evs,session) #sub, exp, montage=mont)  # this seemed like steps before CMLReaders
-        evs_on = evs[evs['type']=='STIM_ON'] #Get events, structured around stim electrodes
-        evs_off = evs[evs['type']=='STIM_OFF']
-
-        #check to make sure all events have same stimulation sites
-        sess_tags = []
-        for i in range(len(evs_on)):
-            stimtag = str(evs_on.iloc[i].stim_params[0]['anode_number'])+'-'+str(evs_on.iloc[i].stim_params[0]['cathode_number'])
-            sess_tags.append(stimtag)
-        sess_tags = np.array(sess_tags)
-        if len(np.unique(sess_tags))>1:
-            raise('There are '+str(len(np.unique(sess_tags)))+' stimulation pairs in session '+str(session)+' from subject '+sub)
-
-        # should really rewrite this to use "pairs" from CMLReaders instead of tal_struct
-        tal_struct, bipolar_pairs, mpchans = get_bp_tal_struct(sub, montage=mont, localization=loc)
-        elec_regions,_ = get_elec_regions(tal_struct)      
-        distmat = get_tal_distmat(tal_struct) 
-        # stimbp is the bipolar PAIR from tal_struct that contains the anode and cathode contacts
-        stimbp,_ = findStimbp(evs_on,sub,session,tal_struct,exp)
-
-        # check if stim region is in MTL
-        if elec_regions[stimbp] in MTL_labels:
-            regs.append(elec_regions[stimbp])
-        else:
-#             Log('Session '+str(session)+' from subject '+sub+' was not stimulated in MTL!!'+'\n',
-#                 'run_stim_regression_log.txt')
-            regs.append(elec_regions[stimbp])
-            #pass
-
-        # get functional connectivity matrix from resting state data (made in getBaseFxlConn)
-        if test_freq_range is True:
-            conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
-                                            sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'Hz_10s_countdown_network'+'.p')    
-        else:
-            conn_file = os.path.join('/home1/john/data/eeg/PS3_fxl_conn/'+sub,
-                                                sub+'_'+exp+'_'+str(fmin)+'-'+str(fmax)+'_network.p')
-        with open(conn_file,'rb') as f:          
-            conn,num_10s_events = pickle.load(f)
-        from scipy.special import logit    
-        conn = logit(conn)
-                    # #         import h5py
-            # #         f = h5py.File('/data10/scratch/jkragel/HCP/adjacency/'+sub+'_adjacency.hdf5', 'r')
-            # #         conn = np.array(f['rsfMRI_zCorr']) # some old version
-
-        ## do t-test between pre and post stimulus for each electrode ##
-
-        # eeg start and end times (in ms)
-        pre_start = -950
-        pre_end = -50
-        post_start = 50
-        post_end = 950
-
-        # parameters
-        notch_filter = True
-        internal_bipolar = True
-        baseline_correct = True # done in get_stim_eeg in esolo code
-        for stim_type in np.arange(2): 
-            if stim_type==0: # stim_on
-                start = pre_start
-                end = pre_end
-                stim_evs = evs_on # evs = evs.query("(type=='STIM_ON')")
-                label = 'pre'
-            elif stim_type==1: # stim_off
-                start = post_start
-                end = post_end
-                stim_evs = evs_off   
-                label = 'post'   
-
-            if internal_bipolar == True:
-                # Bipolar reference to nearest labeled electrode
-                pairs = reader.load('pairs') # voltages across the adjacent contacts
-            else: pairs = None            
-            
-            if stim_type == 1 and exp=='PS3': #PS3 evs_off is messed up!! stim_off was just calculated by adding to stim_on but for
-                           # the timestamp they used 0.25* instead of 0.25/ in the equation. Stim_duration ok tho. This corrects it:               
-                sr = reader.load("sources")['sample_rate']
-                durations = []
-                for i in range(stim_evs.shape[0]):
-                    durations.append(stim_evs.iloc[i].stim_params[0]['stim_duration']) # get stim durations
-                stim_evs['mstime'] = evs_on['mstime'].add(durations).values # replace stim_off times with stim_on+duration
-                eeg_durations = np.round(np.array(durations)*(sr/1000))
-                stim_evs['eegoffset'] = evs_on['eegoffset'].add(eeg_durations).values.astype('int64') # replace eegoffsets
-                
-            # clean=True for Localized Component Filtering (LCF)
-            # reader.load_eeg doesn't seem to like it with < 1 s of data or when 0 isn't included
-            eeg = reader.load_eeg(events=stim_evs, rel_start=start, rel_stop=end, clean=True, scheme=pairs)
-
-            if len(eeg.events) != stim_evs.shape[0]:
-                raise IndexError(str(len(eeg.events)) + ' eeg events for ' + \
-                                str(stim_evs.shape[0]) + ' encoding events')   
-
-            eeg = eeg.to_ptsa() # move to ptsa so can correct baseline and apply filters on timeseries
-
-            if baseline_correct == True:
-                eeg = eeg.baseline_corrected((start,end))
-
-            sr = eeg.samplerate # per second
-
-            if notch_filter == True:
-                from ptsa.data.filters import ButterworthFilter
-                eeg = ButterworthFilter(timeseries=eeg, freq_range=[58.,62.], filt_type='stop', order=4).filter()
-                eeg = ButterworthFilter(timeseries=eeg, freq_range=[118.,122.], filt_type='stop', order=4).filter()
-                eeg = ButterworthFilter(timeseries=eeg, freq_range=[178.,182.], filt_type='stop', order=4).filter()
-            else:
-                pass
-
-            # Use MNE to get multitaper spectral power
-            eeg_length = end-start
-            pows,freqs_done = get_multitaper_power(eeg, time=[0,eeg_length],freqs = np.array([fmin_pow, fmax_pow])) 
-            # returns log(powers) evts X channels averaged over time
-
-            # this finds consecutive timepoints with no change in power. 10 or more of these is enough to remove an event
-            # 1600 Hz is samplerate for R1034D at least so at least 6 ms here
-            # problem might be if there are a bunch of 0s it's going to flag those too. 
-            acceptable_saturations = 9 # more than this # of 0s flagged. 
-            sat_events = find_sat_events(eeg,acceptable_saturations)
-            good_pows = copy(pows); 
-            good_pows[sat_events] = np.nan # .T?
-            print('Total electrodes X events: '+str(eeg.shape[0]*eeg.shape[1]))
-
-            if stim_type==0: # stim_on
-                eeg_pre = copy(eeg)
-                pre_pows = copy(good_pows)
-            elif stim_type==1:
-                eeg_post = copy(eeg)
-                post_pows = copy(good_pows)
-
-        # Get bad electrodes (seizure onset/ictal)
-        
-        badelecs = exclude_bad(sub, mont, just_bad=False)
-        bad_filt = np.zeros(len(tal_struct))
-        for idx, e in enumerate(tal_struct):
-            tagnames = e['tagName'].split('-')
-            if tagnames[0] in badelecs or tagnames[1] in badelecs:
-                bad_filt[idx] = 1
-        
-        #Identify channels to exclude due to decay artifact
-        pvals, lev_pvals = artifactExclusion(eeg_pre,eeg_post)
-        
-        # can set a number. Here just grabbing all unique amplitudes:        
-        desired_amps = {dlist[0]['amplitude'] for dlist in evs_on.stim_params.to_list()} # {750}
-        desired_pulses = {dlist[0]['pulse_freq'] for dlist in evs_on.stim_params.to_list()} # {10} 
-        
-        good_pre = np.zeros(evs_on.shape[0]); 
-        for i,row in enumerate(evs_on.itertuples()): 
-            if row.stim_params[0]['amplitude'] in desired_amps and row.stim_params[0]['pulse_freq'] in desired_pulses:
-                good_pre[i] = True
-        good_post = np.zeros(evs_off.shape[0])        
-        for i,row in enumerate(evs_off.itertuples()): 
-            if row.stim_params[0]['amplitude'] in desired_amps and row.stim_params[0]['pulse_freq'] in desired_pulses:
-                good_post[i] = True 
-        good_trials = np.logical_and(good_pre,good_post) # there's no reason these should differ, 
-                                            #but just in case (since ttest_rel needs equal shape)        
-        #T-test post vs. pre powers
-        from scipy.stats import ttest_rel
-        # mytrials = np.where(good_trials)[0] #mytrials = np.random.choice(mytrials, 50)
-        
-        # t-test values for all electrodes between pre/post for each trial
-        alpha_value = 0.01
-        chan_T, p = ttest_rel(post_pows[good_trials==1, :], pre_pows[good_trials==1, :], axis=0, nan_policy='omit') 
-        orig_T_stats = copy(chan_T) # for Fig. 2b
-        chan_T[pvals<alpha_value] = np.nan # remove post-stim decay artifacts
-        chan_T[lev_pvals<alpha_value] = np.nan 
-        chan_T[bad_filt==1] = np.nan # remove bad electrodes (SOZ/ictal)
-        # for Fig. 2b, label channels as 0) good 1) SOZ/ictal 2) artifactual
-        electrode_indicator = np.zeros(len(chan_T))        
-        electrode_indicator[bad_filt==1] = 1 # remove bad electrodes (SOZ/ictal)   
-        electrode_indicator[pvals<alpha_value] = 2 # remove post-stim decay artifacts
-        electrode_indicator[lev_pvals<alpha_value] = 2 
-#         if session == 0:
-#             print('stopped here to print figures')
-#             break 
-
-        #Dont include stim channels (only those with anode)
-        stim_channels = tal_struct[stimbp]['channel']
-        for idx, i in enumerate(tal_struct['channel']):
-            if (stim_channels[0] in i) or (stim_channels[1] in i):
-                chan_T[idx] = np.nan
-
-        # remove contacts if no connectivity was computed with stim channel
-        chan_T[~np.isfinite(conn[stimbp, :])] = np.nan  
-
-        sess_Ts.append(copy(chan_T))
-        stimbps.append(stimbp)
-        tal_structs.append(tal_struct)
-        subjects.append(sub); sessions.append(session)
-        print('For sub '+sub+', session '+str(session)+', kept '+
-              str(len(chan_T)-np.sum(np.isnan(chan_T)))+'/'+str(len(chan_T))+' channels (pairs)')
-
-        ### DO REGRESSION ###
-
-        print('Regression for session '+str(session))
-
-        if np.sum(np.abs(chan_T)>10)>0:
-            print('Warning! High T-stats detected!')
-            #chan_T[np.abs(chan_T)>10] = np.nan
-
-        #Set up feature matrices
-        chan_T = np.array(chan_T)
-        good_chan = ~np.isnan(chan_T)
-        X = np.empty([np.sum(good_chan), 3])
-        # this is logit(y) = B0 + B1*conn + B2*dist
-        X[:, 2] = distmat[stimbp][good_chan]
-        X[:, 1] = conn[stimbp][good_chan]
-        X[:, 0] = np.ones(np.sum(good_chan))
-        y = chan_T[good_chan]        
-
-        if y.size < 20:
-            print('Warning: <20 electrodes left!')
-
-        #Fit the model
-        result = sm.OLS(y, X).fit()
-        tru_coefs = copy(result.params)
-
-        #Shuffle for null coefficients
-        # seems to me like a better null would be to just not use stimbp above and test diff channels
-        null_coefs = []
-        shuf_idxs = np.arange(X.shape[0])
-        for k in range(1000):
-            np.random.shuffle(shuf_idxs)
-            null_result = sm.OLS(y, X[shuf_idxs, :]).fit()
-            null_coefs.append(null_result.params)
-        null_coefs = np.array(null_coefs)
-
-        #Z-score and p-value true vs. null coefs
-        coef_stats = np.empty([len(tru_coefs), 2])
-        for idx, i in enumerate(tru_coefs):
-            coef_stats[idx, 0] = (i-np.nanmean(null_coefs[:, idx]))/np.nanstd(null_coefs[:, idx]) #z-score
-            coef_stats[idx, 1] = np.sum(null_coefs[:, idx]>i)/float(null_coefs.shape[0]) # empirical p-value
-
-        # Z scores and p-values for connectivity after regressing out effect of distance
-        Conn_Zs.append(coef_stats[1, 0]) # this is NMA(theta)!!
-        Conn_Ps.append(coef_stats[1, 1])
-        good_chans.append(good_chan)    
-
-    except Exception as e:
-        LogDFExceptionLine(row, e, 'run_stim_regression_log.txt')
-
-    try:
-        os.mkdir(sub) #os.mkdir('compiled/PS3_NMA/'+sub)
-    except FileExistsError as e:
-        pass
-
-    fn = os.path.join(sub, #'compiled/PS3_NMA/'+sub,
-                      sub+'_exp-'+exp+'_session-'+str(session)+'_'+str(fmin)+'-'+str(fmax)+'-fc_'+
-                      str(fmin_pow)+'-'+str(fmax_pow)+'-pow.p') #_pulse-10.p')            
-
-    with open(fn,'wb') as f:
-        pickle.dump({'sess_Ts':sess_Ts, 'stimbps':stimbps, 'Conn_Zs': Conn_Zs, 'Conn_Ps': Conn_Ps, 
-                     'sessions':sessions, 'tal_structs': tal_structs, 'subjects':subjects,
-                     'good_chans':good_chans, 'regs':regs, 'electrode_indicator':electrode_indicator,
-                     'orig_T_stats':orig_T_stats}, f)
-    return
