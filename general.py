@@ -99,6 +99,8 @@ def superVstack(a,b):
     # make it so you can vstack onto empty row
     if len(a)==0:
         stack = b
+    elif len(b)==0:
+        stack = a
     else:
         stack = np.vstack([a,b])
     return stack
