@@ -13,6 +13,28 @@ from ptsa.data.filters import morlet
 from ptsa.data.filters import ButterworthFilter
 from general import *
 
+# all the unique sub names for FR1 task in df
+total_sub_names = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
+       'R1022J', 'R1027J', 'R1032D', 'R1033D', 'R1034D', 'R1035M',
+       'R1044J', 'R1045E', 'R1048E', 'R1049J', 'R1052E', 'R1054J',
+       'R1056M', 'R1059J', 'R1061T', 'R1063C', 'R1065J', 'R1066P',
+       'R1067P', 'R1068J', 'R1077T', 'R1080E', 'R1083J', 'R1089P',
+       'R1092J', 'R1094T', 'R1096E', 'R1101T', 'R1102P', 'R1104D',
+       'R1105E', 'R1108J', 'R1112M', 'R1113T', 'R1115T', 'R1120E',
+       'R1122E', 'R1123C', 'R1125T', 'R1128E', 'R1131M', 'R1134T',
+       'R1136N', 'R1137E', 'R1138T', 'R1147P', 'R1150J', 'R1151E',
+       'R1154D', 'R1158T', 'R1159P', 'R1161E', 'R1162N', 'R1163T',
+       'R1167M', 'R1168T', 'R1171M', 'R1172E', 'R1174T', 'R1176M',
+       'R1191J', 'R1195E', 'R1200T', 'R1203T', 'R1204T', 'R1212P',
+       'R1215M', 'R1217T', 'R1221P', 'R1229M', 'R1230J', 'R1236J',
+       'R1241J', 'R1243T', 'R1260D', 'R1268T', 'R1275D', 'R1281E',
+       'R1283T', 'R1288P', 'R1292E', 'R1293P', 'R1297T', 'R1298E',
+       'R1299T', 'R1306E', 'R1308T', 'R1310J', 'R1311T', 'R1313J',
+       'R1315T', 'R1316T', 'R1320D', 'R1323T', 'R1325C', 'R1328E',
+       'R1330D', 'R1332M', 'R1334T', 'R1336T', 'R1338T', 'R1339D',
+       'R1341T', 'R1342M', 'R1346T', 'R1349T', 'R1350D', 'R1374T',
+       'R1397D']
+
 def Log(s, logname):
     date = datetime.datetime.now().strftime('%F_%H-%M-%S')
     output = date + ': ' + str(s)
@@ -135,19 +157,21 @@ def get_tal_distmat(tal_struct):
     return distmat  
 
 def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
-    if remove_soz_ictal == True:
-        bad_elecs = elecs_cat['bad_channel'] + elecs_cat['soz'] + elecs_cat['interictal']
-    else:
-        bad_elecs = elecs_cat['bad_channel']
+    # get the bad channels and soz/ictal/lesion channels from electrode_categories.txt files
     bad_bp_mask = np.zeros(len(tal_struct))
-    for idx,tal_row in enumerate(tal_struct):
-        elec_labels = tal_row['tagName'].split('-')
-        # if there are dashes in the monopolar elec names, need to fix that
-        if (len(elec_labels) > 2) & (len(elec_labels) % 2 == 0): # apparently only one of these so don't need an else
-            n2 = int(len(elec_labels)/2)
-            elec_labels = ['-'.join(elec_labels[0:n2]), '-'.join(elec_labels[n2:])]
-        if elec_labels[0] in bad_elecs or elec_labels[1] in bad_elecs:
-            bad_bp_mask[idx] = 1
+    if elecs_cat != []:
+        if remove_soz_ictal == True:
+            bad_elecs = elecs_cat['bad_channel'] + elecs_cat['soz'] + elecs_cat['interictal']
+        else:
+            bad_elecs = elecs_cat['bad_channel']
+        for idx,tal_row in enumerate(tal_struct):
+            elec_labels = tal_row['tagName'].split('-')
+            # if there are dashes in the monopolar elec names, need to fix that
+            if (len(elec_labels) > 2) & (len(elec_labels) % 2 == 0): # apparently only one of these so don't need an else
+                n2 = int(len(elec_labels)/2)
+                elec_labels = ['-'.join(elec_labels[0:n2]), '-'.join(elec_labels[n2:])]
+            if elec_labels[0] in bad_elecs or elec_labels[1] in bad_elecs:
+                bad_bp_mask[idx] = 1
     return bad_bp_mask
 
 def getStartEndArrays(ripple_array,sr):
