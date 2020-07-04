@@ -1,0 +1,16 @@
+#!/bin/bash
+
+echo -n "rhino2 "
+printf "%6s\n" $(ssh rhino2 "/usr/global/shared/loadavg5min")
+
+qstat -f | grep @node | perl -ne '
+  if (/.+?@(node\d+)\s+.+?\s+.+?\s+(.+?)\s+/) {
+    print ("$1 ");
+    if ($2 == "-NA-") {
+      print("    NA\n");
+    }
+    else {
+      printf("%6.2f\n", $2);
+    }
+  }' | sort -n
+

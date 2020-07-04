@@ -1,0 +1,4 @@
+#!/bin/bash
+
+qstat -f | perl -ne 'if (/(node\d+)/) { print $1."\n"; }' | sort -n | uniq
+

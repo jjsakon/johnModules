@@ -174,11 +174,10 @@ def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
                 bad_bp_mask[idx] = 1
     return bad_bp_mask
 
-def getStartEndArrays(ripple_array,sr):
+def getStartEndArrays(ripple_array):
     # get separate arrays of SWR starts and SWR ends from the full binarized array
-    sr_factor = (1000/sr)
-    start_array = np.zeros((ripple_array.shape))
-    end_array = np.zeros((ripple_array.shape))
+    start_array = np.zeros((ripple_array.shape),dtype='uint8')
+    end_array = np.zeros((ripple_array.shape),dtype='uint8')
     num_trials = ripple_array.shape[0]
     for trial in range(num_trials):
         ripplelogictrial = ripple_array[trial]
@@ -363,8 +362,8 @@ def downsampleBinary(array,factor):
         # when dividing by non-integer, can just use FFT and round to get new sampling
         from scipy.signal import resample
         if array.shape[1]/factor-int(array.shape[1]/factor)!=0:
-            print('Did not get whole number array for downsampling')
-        new_sampling = int(array.shape[1]/factor)
+            print('Did not get whole number array for downsampling...rounding to nearest 100')
+        new_sampling = int( round((array.shape[1]/factor)/100) )*100
         for t in range(array.shape[0]):
             array_save = superVstack(array_save,np.round(resample(array[t],new_sampling)))
     return array_save
@@ -436,7 +435,10 @@ def fullPSTH(point_array,binsize,smoothing_triangle,sr,start_offset):
     count = np.histogram(xtimes,bins=edges);
     norm_count = count/np.array((num_trials*binsize/1000))
     #smoothed = fastSmooth(norm_count[0],5) # use triangular instead, although this gives similar answer
-    PSTH = triangleSmooth(norm_count[0],smoothing_triangle)
+    if smoothing_triangle==1:
+        PSTH = norm_count[0]
+    else:
+        PSTH = triangleSmooth(norm_count[0],smoothing_triangle)
     return PSTH,bin_centers
 
 def bootPSTH(point_array,binsize,smoothing_triangle,sr,start_offset): # same as above, but single output so can bootstrap
@@ -527,9 +529,12 @@ def ClusterRun(function, parameter_list, max_cores=100):
     num_cores = min(num_cores, max_cores)
 
     myhomedir = str(Path.home())
-
+    # can add in 'mem':Num where Num is # of GB to allow for memory into extra_params
+    #...Nora said it doesn't work tho and no sign it does
+    # can also try increasing cores_per_job to >1, but should also reduce num_jobs to not hog
+    # so like 2 and 50 instead of 1 and 100
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=num_cores, cores_per_job=1, \
+        num_jobs=num_cores, cores_per_job=2, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:

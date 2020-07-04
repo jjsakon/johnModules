@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for node in rhino2 $(/usr/global/shared/list_nodes)
+do
+  echo -n "$node "
+  ssh "$node" /usr/global/shared/available_memory
+done
+

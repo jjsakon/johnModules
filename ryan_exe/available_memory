@@ -1,0 +1,4 @@
+#!/bin/bash
+
+free | grep "Mem:" | awk '{print 100.0*$7/$2."%";}'
+
