@@ -133,20 +133,20 @@ def findStimbpLS(evs_on,sub,session,tal_struct):
     stim_list = []
     for i in range(evs_on.shape[0]):
         stim_list.append([evs_on.iloc[i].stim_params[0]['anode_number'],evs_on.iloc[i].stim_params[0]['cathode_number']])
-    all_stim,num_of_each = findUniquePairs(stim_list)
+    all_stim,num_trials_each_stimbp = findUniquePairs(stim_list)
     chs = [list(temp) for temp in tal_struct['channel']]
     stimbp = []
-    for j,stim_pair in enumerate(all_stim):
+    for j,stim_pair in enumerate(all_stim): # find bp chan for each of stim pairs
         temp_site = np.nan
         for idx,ch_pair in enumerate(chs):
             if sum(stim_pair==np.array(ch_pair))==2: # if the anode/cathode pair were recorded from (not always the case!)
                 temp_site = idx
-        if np.isnan(temp_site): # if anode/cathode pair don't have a site...just grab first from anode       
+        if np.isnan(temp_site): # if anode/cathode pair don't have a site...just grab first from anode    
             temp_site = findAinB([stim_pair[0]],chs)[0]
             print('stimbp set to: '+str(temp_site)+', since anode/cathode pair not in tal_struct for '+sub
                   +', '+str(session)+', Stim pair: '+str(j))
         stimbp.append(temp_site)    
-    return stimbp 
+    return stimbp,num_trials_each_stimbp
 
 def get_tal_distmat(tal_struct):
         
@@ -246,47 +246,65 @@ def find_sat_events(eegs,acceptable_saturations):
     print('Number of saturated electrodes X events: '+str(np.sum(sat_events)))
     return sat_events.astype(bool)
 
-# from Ethan's mne_pipeline_refactored script
-def exclude_bad(s, montage, just_bad=None):
-    from glob import glob
-    try:
-#         # shouldn't actually be any different if montage isn't 0... so remove this
-#         if montage!=0:  
-#             fn = 'home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'_'+str(montage)+'.txt'
-#             # copied this over from:
-#             #fn = '/scratch/pwanda/electrode_categories/electrode_categories_'+s+'_'+str(montage)+'.txt'
-#         else:
-        if len(glob('/data/eeg/'+s+'/docs/electrode_categories.txt'))>0:
-            fn = '/data/eeg/'+s+'/docs/electrode_categories.txt'
+def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
+    # get the bad channels and soz/ictal/lesion channels from electrode_categories.txt files
+    bad_bp_mask = np.zeros(len(tal_struct))
+    if elecs_cat != []:
+        if remove_soz_ictal == True:
+            bad_elecs = elecs_cat['bad_channel'] + elecs_cat['soz'] + elecs_cat['interictal']
         else:
-            print("Didn't find electrode_categories.txt in data/eeg...so find in folder stolen from Paul")
-            if len(glob('/home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'.txt'))>0:
-                fn = '/home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'.txt'
-                #fn = '/scratch/pwanda/electrode_categories/electrode_categories_'+s+'.txt'
-            elif len(glob('/home1/john/data/eeg/electrode_categories/'+s+'_electrode_categories.txt'))>0:
-                fn = '/home1/john/data/eeg/electrode_categories/'+s+'_electrode_categories.txt'
-                #fn = '/scratch/pwanda/electrode_categories/'+s+'_electrode_categories.txt'
-            else:
-                print("Didn't find any electrode_categories! Even in john/data/eeg/electrode_categories folder")
+            bad_elecs = elecs_cat['bad_channel']
+        for idx,tal_row in enumerate(tal_struct):
+            elec_labels = tal_row['tagName'].split('-')
+            # if there are dashes in the monopolar elec names, need to fix that
+            if (len(elec_labels) > 2) & (len(elec_labels) % 2 == 0): # apparently only one of these so don't need an else
+                n2 = int(len(elec_labels)/2)
+                elec_labels = ['-'.join(elec_labels[0:n2]), '-'.join(elec_labels[n2:])]
+            if elec_labels[0] in bad_elecs or elec_labels[1] in bad_elecs:
+                bad_bp_mask[idx] = 1
+    return bad_bp_mask
 
-        with open(fn, 'r') as fh:
-            lines = [mystr.replace('\n', '') for mystr in fh.readlines()]
-    except:
-        print("Didn't load montage file correctly from exclude_bad for subject "+s+', montage = '+str(montage))
-        lines = []
+# # from Ethan's mne_pipeline_refactored script...use the above getBadChannels now!
+# def exclude_bad(s, montage, just_bad=None):
+#     from glob import glob
+#     try:
+# #         # shouldn't actually be any different if montage isn't 0... so remove this
+# #         if montage!=0:  
+# #             fn = 'home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'_'+str(montage)+'.txt'
+# #             # copied this over from:
+# #             #fn = '/scratch/pwanda/electrode_categories/electrode_categories_'+s+'_'+str(montage)+'.txt'
+# #         else:
+#         if len(glob('/data/eeg/'+s+'/docs/electrode_categories.txt'))>0:
+#             fn = '/data/eeg/'+s+'/docs/electrode_categories.txt'
+#         else:
+#             print("Didn't find electrode_categories.txt in data/eeg...so find in folder stolen from Paul")
+#             if len(glob('/home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'.txt'))>0:
+#                 fn = '/home1/john/data/eeg/electrode_categories/electrode_categories_'+s+'.txt'
+#                 #fn = '/scratch/pwanda/electrode_categories/electrode_categories_'+s+'.txt'
+#             elif len(glob('/home1/john/data/eeg/electrode_categories/'+s+'_electrode_categories.txt'))>0:
+#                 fn = '/home1/john/data/eeg/electrode_categories/'+s+'_electrode_categories.txt'
+#                 #fn = '/scratch/pwanda/electrode_categories/'+s+'_electrode_categories.txt'
+#             else:
+#                 print("Didn't find any electrode_categories! Even in john/data/eeg/electrode_categories folder")
+
+#         with open(fn, 'r') as fh:
+#             lines = [mystr.replace('\n', '') for mystr in fh.readlines()]
+#     except:
+#         print("Didn't load montage file correctly from exclude_bad for subject "+s+', montage = '+str(montage))
+#         lines = []
         
-    if just_bad is True:
-        bidx=len(lines)
-        try:
-            bidx = [s.lower().replace(':', '').strip() for s in lines].index('bad electrodes')
-        except:
-            try:
-                bidx = [s.lower().replace(':', '').strip() for s in lines].index('broken leads')
-            except:
-                lines = []
-        lines = lines[bidx:]
+#     if just_bad is True:
+#         bidx=len(lines)
+#         try:
+#             bidx = [s.lower().replace(':', '').strip() for s in lines].index('bad electrodes')
+#         except:
+#             try:
+#                 bidx = [s.lower().replace(':', '').strip() for s in lines].index('broken leads')
+#             except:
+#                 lines = []
+#         lines = lines[bidx:]
     
-    return lines
+#     return lines
     
 def artifactExclusion(eegs_pre,eegs_post):
     #Return p-values indicating channels with significant artifact: t-test and levene variance test
