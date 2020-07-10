@@ -505,7 +505,7 @@ def GetElectrodes(sub,start,stop):
 def MakeLocationFilter(scheme, location):
     return [location in s for s in [s if s else '' for s in scheme.iloc()[:]['ind.region']]]
 
-def ClusterRun(function, parameter_list, max_cores=50):
+def ClusterRun(function, parameter_list, max_cores=100):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -532,9 +532,9 @@ def ClusterRun(function, parameter_list, max_cores=50):
     # can add in 'mem':Num where Num is # of GB to allow for memory into extra_params
     #...Nora said it doesn't work tho and no sign it does
     # can also try increasing cores_per_job to >1, but should also reduce num_jobs to not hog
-    # so like 2 and 50 instead of 1 and 100
+    # so like 2 and 50 instead of 1 and 100 etc. Went up to 5 for encoding at points
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=num_cores, cores_per_job=5, \
+        num_jobs=num_cores, cores_per_job=1, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
