@@ -441,6 +441,114 @@ def fullPSTH(point_array,binsize,smoothing_triangle,sr,start_offset):
         PSTH = triangleSmooth(norm_count[0],smoothing_triangle)
     return PSTH,bin_centers
 
+def binBinaryArray(start_array,bin_size,sr_factor):
+    # instead of PSTH, get a binned binary array that keeps the trials but bins over time
+    bins = np.arange(0,start_array.shape[1],bin_size/sr_factor) #start_array.shape[1]/bin_size*sr_factor
+    bin_in_sr = bin_size/sr_factor
+    bin_to_hz = 1000/bin_size*bin_in_sr # factor that converts binned matrix to Hz
+    
+    binned_array = [] # note this will be at instantaeous rate bin_in_sr multiple lower (e.g. 100 ms bin/2 sr = 50x)
+    for row in start_array:
+        temp_row = []
+        for time_bin in bins:
+            temp_row.append(bin_to_hz*np.mean(row[int(time_bin):int(time_bin+bin_in_sr)]))
+        binned_array = superVstack(binned_array,temp_row)
+    return binned_array
+
+def getSubSessPredictors(sub_names,sub_sess_names,trial_nums):
+    # get arrays of predictors for each trial so can set up ME model
+    
+    subject_name_array = []
+    session_name_array = []
+
+    trial_ct = 0
+    for ct,subject in enumerate(sub_names):    
+        trials_this_loop = int(trial_nums[ct])
+        trial_ct = trial_ct + trials_this_loop 
+        # update each array with subjects, sessions, and other prdictors
+        subject_name_array.extend(np.tile(subject,trials_this_loop))
+        session_name_array.extend(np.tile(sub_sess_names[ct],trials_this_loop))
+        
+    return subject_name_array,session_name_array
+
+def getMixedEffectCIs(binned_start_array,subject_name_array,session_name_array):
+    # take a binned array of ripples and find the mixed effect confidence intervals
+    # note that output is the net ± distance from mean
+    import statsmodels.formula.api as smf
+
+    # now, to set up ME regression, append each time_bin to bottom and duplicate
+    mean_values = []
+    CIs = []
+    for time_bin in range(np.shape(binned_start_array)[1]):
+        ripple_rates = binned_start_array[:,time_bin]
+        CI_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates})
+        # now get the CIs JUST for this time bin
+        vc = {'session':'0+session'}
+        get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", CI_df, groups="subject", vc_formula=vc)
+        bin_model = get_bin_CI_model.fit(reml=False, method='nm')
+        mean_values.append(bin_model.params.Intercept)
+        CIs = superVstack(CIs,bin_model.conf_int().iloc[0].values)
+    # get CI distances at each bin by subtracting from means
+    CI_plot = np.array(CIs.T)
+    CI_plot[0,:] = mean_values - CI_plot[0,:] # - difference to subtract from PSTH
+    CI_plot[1,:] = CI_plot[1,:] - mean_values # + difference to add to PSTH
+    
+    return CI_plot
+
+def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
+    # returns mixed effect model for the given trial X bins array by comparing bins
+    import statsmodels.formula.api as smf
+    
+    bin_label = []
+    session_name = []
+    subject_name = []
+    ripple_rates = []
+    # now, to set up ME pairwise stats, append each time_bin to bottom and duplicate
+    for time_bin in range(np.shape(binned_start_array)[1]): 
+        session_name.extend(session_name_array)
+        subject_name.extend(subject_name_array)
+        bin_label.extend(np.tile(str(time_bin),binned_start_array.shape[0]))
+        ripple_rates.extend(binned_start_array[:,time_bin])
+    bin_df = pd.DataFrame(data={'session':session_name,'subject':subject_name,
+                               'bin':bin_label,'ripple_rates':ripple_rates})
+    vc = {'session':'0+session'}
+    import ipdb; ipdb.set_trace()
+    sig_bin_model = smf.mixedlm("ripple_rates ~ bin", bin_df, groups="subject", vc_formula=vc)
+    bin_model = sig_bin_model.fit(reml=False, method='nm')
+    return bin_model
+
+def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,
+        sub_forgot,sess_forgot,sub_recalled,sess_recalled):
+    # here looking at only a single bin but now comparing across categories (e.g. remembered v. forgotten)
+    import statsmodels.formula.api as smf
+    
+    category_label = []
+    session_name = []
+    subject_name = []
+    ripple_rates = []
+    # now, to set up ME pairwise stats, append each time_bin to bottom and duplicate
+    for category in range(2): 
+        if category == 0: # remembered then forgot
+            binned_start_array = binned_recalled_array
+            session_name_array = sess_recalled
+            subject_name_array = sub_recalled
+        else:
+            binned_start_array = binned_forgot_array
+            session_name_array = sess_forgot
+            subject_name_array = sub_forgot        
+        session_name.extend(session_name_array)
+        subject_name.extend(subject_name_array)
+        category_label.extend(np.tile(str(category),binned_start_array.shape[0]))
+        ripple_rates.extend(binned_start_array) # should only be a vector since looking at only single bin
+    category_label = np.array(category_label)
+    print('est')
+    bin_df = pd.DataFrame(data={'session':session_name,'subject':subject_name,
+                               'category':category_label,'ripple_rates':ripple_rates})
+    vc = {'session':'0+session'}
+    sig_bin_model = smf.mixedlm("ripple_rates ~ category", bin_df, groups="subject", vc_formula=vc)
+    bin_model = sig_bin_model.fit(reml=False, method='nm')
+    return bin_model
+
 def bootPSTH(point_array,binsize,smoothing_triangle,sr,start_offset): # same as above, but single output so can bootstrap
     # point_array is binary point time (spikes or SWRs) v. trial
     # binsize in ms, smoothing_triangle is how many points in triangle kernel moving average
