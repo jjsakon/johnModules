@@ -407,6 +407,7 @@ def fastSmooth(a,window_size): # I ended up not using this one. It's what Norman
 def triangleSmooth(data,smoothing_triangle): # smooth data with triangle filter using padded edges
     
     factor = smoothing_triangle-3 # factor is how many points from middle does triangle go?
+    # this all just gets the triangle for given smoothing_triangle length
     f = np.zeros((1+2*factor))
     for i in range(factor):
         f[i] = i+1
@@ -509,16 +510,15 @@ def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
         subject_name.extend(subject_name_array)
         bin_label.extend(np.tile(str(time_bin),binned_start_array.shape[0]))
         ripple_rates.extend(binned_start_array[:,time_bin])
+
     bin_df = pd.DataFrame(data={'session':session_name,'subject':subject_name,
                                'bin':bin_label,'ripple_rates':ripple_rates})
     vc = {'session':'0+session'}
-    import ipdb; ipdb.set_trace()
     sig_bin_model = smf.mixedlm("ripple_rates ~ bin", bin_df, groups="subject", vc_formula=vc)
     bin_model = sig_bin_model.fit(reml=False, method='nm')
     return bin_model
 
-def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,
-        sub_forgot,sess_forgot,sub_recalled,sess_recalled):
+def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,sub_forgot,sess_forgot,sub_recalled,sess_recalled):
     # here looking at only a single bin but now comparing across categories (e.g. remembered v. forgotten)
     import statsmodels.formula.api as smf
     
@@ -539,9 +539,8 @@ def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,
         session_name.extend(session_name_array)
         subject_name.extend(subject_name_array)
         category_label.extend(np.tile(str(category),binned_start_array.shape[0]))
-        ripple_rates.extend(binned_start_array) # should only be a vector since looking at only single bin
-    category_label = np.array(category_label)
-    print('est')
+        ripple_rates.extend(binned_start_array[:,0]) # even though only a vector gotta call it out of this list so it's hashable 
+
     bin_df = pd.DataFrame(data={'session':session_name,'subject':subject_name,
                                'category':category_label,'ripple_rates':ripple_rates})
     vc = {'session':'0+session'}
