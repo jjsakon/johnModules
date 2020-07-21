@@ -69,6 +69,29 @@ def normFFT(eeg):
     N = len(eeg)
     fft_eeg = 1/N*np.abs(fft(eeg)[:N//2]) # should really normalize by Time/sample rate (e.g. 4 s of eeg/500 hz sampling=8)
     return fft_eeg
+
+def getSecondRecalls(evs_free_recall,IRI):
+    # instead of removing recalls with <IRI, get ONLY the second recalls have been been removed
+    # note that all recalls within IRI of the second recalls are then remove to make it "only"
+    mstime_diffs = np.diff(evs_free_recall.mstime)
+    second_recalls = np.append(False,mstime_diffs<=IRI) # first one can never be second recall so add a False
+    mstime_diffs = np.append(0,mstime_diffs) # add a first trial just to make this align with diffs
+    adjusted_second_recalls = copy(second_recalls)
+
+    i=-1
+    while i < len(second_recalls)-1:
+        i+=1
+        second_recall = second_recalls[i]
+        if second_recall == True and i < (len(second_recalls)-1): # -1 since adding 1 below
+            # now that have a second recall, make sure ones after it aren't within 2000 ms of it
+            last_time_diff = 0
+            while (last_time_diff+mstime_diffs[i+1])<=IRI:
+                adjusted_second_recalls[i+1] = False
+                last_time_diff = last_time_diff + mstime_diffs[i+1]
+                i+=1
+                if i >= (len(second_recalls)-1): # same idea as above. already checked last row so -1!
+                    break                
+    return adjusted_second_recalls
     
 def get_bp_tal_struct(sub, montage, localization):
     
