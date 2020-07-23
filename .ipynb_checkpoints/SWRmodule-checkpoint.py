@@ -70,6 +70,20 @@ def normFFT(eeg):
     fft_eeg = 1/N*np.abs(fft(eeg)[:N//2]) # should really normalize by Time/sample rate (e.g. 4 s of eeg/500 hz sampling=8)
     return fft_eeg
 
+def remove_recall_repeats(serialpositions):
+    #Takes array of serial positions for serialpositions and remove any after the first one
+    items_to_keep = np.ones(len(serialpositions)).astype(bool)
+    items_seen = []
+    idx_removed = []
+    for idx in range(len(serialpositions)):
+        if serialpositions[idx] in items_seen:
+            items_to_keep[idx] = False
+            idx_removed.append(idx)
+        items_seen.append(serialpositions[idx])
+
+    final_vec = np.array(serialpositions)[items_to_keep]
+    return final_vec, idx_removed
+
 def getSecondRecalls(evs_free_recall,IRI):
     # instead of removing recalls with <IRI, get ONLY the second recalls have been been removed
     # note that all recalls within IRI of the second recalls are then remove to make it "only"
