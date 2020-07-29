@@ -70,6 +70,24 @@ def normFFT(eeg):
     fft_eeg = 1/N*np.abs(fft(eeg)[:N//2]) # should really normalize by Time/sample rate (e.g. 4 s of eeg/500 hz sampling=8)
     return fft_eeg
 
+def removeRepeatedRecalls(evs_free_recall,word_evs):
+    # use recall and list word dfs to identify repeated recalls and remove them from recall events
+    
+    good_free_recalls = np.ones(len(evs_free_recall))    
+    list_nums = evs_free_recall.list.unique()    
+    for ln in list_nums:
+        evs_idxs_for_list_recalls = np.where(evs_free_recall.list==ln)[0] # idxs in evs df so can set repeats to 0
+        list_recalls = evs_free_recall[evs_free_recall.list==ln] # recalls just for this list
+        list_words = word_evs[word_evs.list==ln] # words just for this list
+        recalls_serial_pos = [int(list_words[list_words.item_name==w].serialpos) for w in list_recalls.item_name] 
+        _,repeats_to_remove = remove_recall_repeats(recalls_serial_pos) # get idxs for this list of which recalls were removed
+        if len(repeats_to_remove)>0:
+            evs_idxs_for_list_recalls = evs_idxs_for_list_recalls[repeats_to_remove] # grab right indxs for the whole session index
+            good_free_recalls[evs_idxs_for_list_recalls] = 0 # remove from session index
+    evs_free_recall = evs_free_recall[good_free_recalls==1]
+    
+    return evs_free_recall
+
 def remove_recall_repeats(serialpositions):
     #Takes array of serial positions for serialpositions and remove any after the first one
     items_to_keep = np.ones(len(serialpositions)).astype(bool)
