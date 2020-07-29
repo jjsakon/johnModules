@@ -84,6 +84,41 @@ def remove_recall_repeats(serialpositions):
     final_vec = np.array(serialpositions)[items_to_keep]
     return final_vec, idx_removed
 
+def get_recall_clustering(recall_cluster_values, recall_serial_pos):
+    from scipy.spatial.distance import euclidean
+    from scipy.stats import percentileofscore
+    import itertools
+    #Get temporal/semantic clustering scores. 
+
+    #recall_cluster_values: array of semantic/temporal values
+    #recall_serial_pos: array of indices for true recall sequence (indexing depends on when called), e.g. [1, 12, 3, 5, 9, 6]
+
+    recall_cluster_values = copy(np.array(recall_cluster_values).astype(float))
+    all_pcts = []
+    all_possible_trans = list(itertools.combinations(range(len(recall_cluster_values)), 2))
+
+    for ridx in np.arange(len(recall_serial_pos)-1):  #Loops through each recall event, except last one
+        possible_trans = [comb 
+                          for comb in all_possible_trans 
+                          if (recall_serial_pos[ridx] in comb)
+                         ]
+        dists = []
+        for c in possible_trans: # all possible trans within list
+            try:
+                dists.append(euclidean(recall_cluster_values[c[0]], recall_cluster_values[c[1]]))
+            except:
+                #If we did this transition, then it's a NaN, so append a NaN
+                dists.append(np.nan)
+        dists = np.array(dists)
+        dists = dists[np.isfinite(dists)]
+        true_trans = euclidean(recall_cluster_values[recall_serial_pos[ridx]], recall_cluster_values[recall_serial_pos[ridx+1]])
+        pctrank = 1.-percentileofscore(dists, true_trans, kind='strict')/100.
+        all_pcts.append(pctrank) # percentile rank within each list
+
+        recall_cluster_values[recall_serial_pos[ridx]] = np.nan
+
+    return all_pcts
+
 def getSecondRecalls(evs_free_recall,IRI):
     # instead of removing recalls with <IRI, get ONLY the second recalls have been been removed
     # note that all recalls within IRI of the second recalls are then remove to make it "only"
