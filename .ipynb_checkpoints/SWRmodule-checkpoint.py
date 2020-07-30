@@ -71,7 +71,7 @@ def normFFT(eeg):
     return fft_eeg
 
 def removeRepeatedRecalls(evs_free_recall,word_evs):
-    # use recall and list word dfs to identify repeated recalls and remove them from recall events
+    # use recall df and list word df to identify repeated recalls and remove them from recall df
     
     good_free_recalls = np.ones(len(evs_free_recall))    
     list_nums = evs_free_recall.list.unique()    
@@ -89,7 +89,7 @@ def removeRepeatedRecalls(evs_free_recall,word_evs):
     return evs_free_recall
 
 def remove_recall_repeats(serialpositions):
-    #Takes array of serial positions for serialpositions and remove any after the first one
+    #Takes array of numbers (serial positions) and removes any repeated ones
     items_to_keep = np.ones(len(serialpositions)).astype(bool)
     items_seen = []
     idx_removed = []
@@ -101,6 +101,20 @@ def remove_recall_repeats(serialpositions):
 
     final_vec = np.array(serialpositions)[items_to_keep]
     return final_vec, idx_removed
+
+def getOutputPositions(evs,evs_free_recall):       
+    # let's get the recall output positions (after selecting which recalls...since can always use df to get original recall list)
+    lists_visited = evs_free_recall.list.unique()
+    orig_evs_free_recall = evs[(evs.type=='REC_WORD') & (evs.recalled==True)] # get original 
+    session_corrected_list_ops = []
+    for list_num in lists_visited:
+        original_list_recalls = orig_evs_free_recall[orig_evs_free_recall.list==list_num] # grab trials from this list from original free recalls
+        original_op_order = np.arange(len(original_list_recalls))
+        corrected_list_recalls = evs_free_recall[evs_free_recall.list==list_num]    
+        # I think the easiest way to do this is search for the mstimes in the original list to get index, then grab order
+        temp_idxs = [findAinB([pos_mstime],original_list_recalls.mstime)[0] for pos_mstime in corrected_list_recalls.mstime]
+        session_corrected_list_ops.extend(original_op_order[temp_idxs])
+    return session_corrected_list_ops
 
 def get_recall_clustering(recall_cluster_values, recall_serial_pos):
     from scipy.spatial.distance import euclidean
