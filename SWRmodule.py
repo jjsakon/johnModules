@@ -70,6 +70,31 @@ def normFFT(eeg):
     fft_eeg = 1/N*np.abs(fft(eeg)[:N//2]) # should really normalize by Time/sample rate (e.g. 4 s of eeg/500 hz sampling=8)
     return fft_eeg
 
+def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period):
+    # get strings for path name for save and loading cluster data
+    if remove_soz_ictal == False:
+        soz_label = 'soz_in'
+    else:
+        soz_label = 'soz_out'
+    recall_selection_name = ''
+    if recall_type_switch == 1:
+        recall_selection_name = 'FIRSTOFCOMPOUND'
+    elif recall_type_switch == 2:
+        recall_selection_name = 'RECALLTWO'
+    elif recall_type_switch == 3:
+        recall_selection_name = 'SOLONOCOMPOUND'  
+    if selected_period == 'surrounding_recall':
+        if recall_type_switch == 0:
+            subfolder = 'IRIonly'
+        else:
+            subfolder = recall_selection_name
+    elif selected_period == 'whole_retrieval':
+        subfolder = 'WHOLE_RETRIEVAL'
+    elif selected_period == 'encoding':
+        subfolder = 'ENCODING' 
+    
+    return soz_label,recall_selection_name,subfolder
+
 def removeRepeatedRecalls(evs_free_recall,word_evs):
     # use recall df and list word df to identify repeated recalls and remove them from recall df
     
