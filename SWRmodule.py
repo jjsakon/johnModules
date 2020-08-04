@@ -85,7 +85,7 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period):
         recall_selection_name = 'SOLONOCOMPOUND'  
     if selected_period == 'surrounding_recall':
         if recall_type_switch == 0:
-            subfolder = 'IRIonly'
+            subfolder = 'IRIonly' # for all recall trials as usual
         else:
             subfolder = recall_selection_name
     elif selected_period == 'whole_retrieval':
