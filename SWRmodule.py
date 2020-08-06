@@ -95,6 +95,39 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period):
     
     return soz_label,recall_selection_name,subfolder
 
+def selectRecallType(recall_type_switch,evs_free_recall,IRI):
+    # input recall type (assigned in SWRanalysis) and output the selected idxs and their associated string name
+
+    if recall_type_switch == 0:
+        # remove events with Inter-Recall Intervals too small. IRI = psth_start since that's what will show in PSTH
+        selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI)
+        recall_selection_name = ''
+    elif recall_type_switch == 1:
+        # subset of recalls < IRI as above, but ONLY keeping those first ones where a second one happens within IRI
+        # in other words, removing isolated recalls that don't lead to a subseqent recall 
+        
+        keep_recall_with_another_recall_within = 2000 # trying 2000 ms but could make thish smaller like 1000 ms
+        
+        # False at end since another recall never happens
+        selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
+                np.append(np.diff(evs_free_recall.mstime)<=keep_recall_with_another_recall_within,False) 
+        recall_selection_name = 'FIRSTOFCOMPOUND'
+    elif recall_type_switch == 2:
+        # get ONLY second recalls within 2 s of the first recall (these are removed in selection_type=0)
+        selected_recalls_idxs = getSecondRecalls(evs_free_recall,IRI) 
+        recall_selection_name = 'RECALLTWO'
+    elif recall_type_switch == 3:
+        # subset of recalls < IRI
+        
+        remove_recalls_with_another_recall_within = 2000
+        
+        # True at end since another recall never happens
+        selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
+                np.append(np.diff(evs_free_recall.mstime)>remove_recalls_with_another_recall_within,True) 
+        recall_selection_name = 'SOLONOCOMPOUND'
+    
+    return recall_selection_name,selected_recalls_idxs
+
 def removeRepeatedRecalls(evs_free_recall,word_evs):
     # use recall df and list word df to identify repeated recalls and remove them from recall df
     
