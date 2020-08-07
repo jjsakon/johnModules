@@ -193,7 +193,7 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
                           if (recall_serial_pos[ridx] in comb)
                          ]
         dists = []
-        for c in possible_trans: # all possible trans within list
+        for c in possible_trans: # all possible trans within list...do it this way since can avoid the true one with the except
             try:
                 dists.append(euclidean(recall_cluster_values[c[0]], recall_cluster_values[c[1]]))
             except:
@@ -202,10 +202,10 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
         dists = np.array(dists)
         dists = dists[np.isfinite(dists)]
         true_trans = euclidean(recall_cluster_values[recall_serial_pos[ridx]], recall_cluster_values[recall_serial_pos[ridx+1]])
-        pctrank = 1.-percentileofscore(dists, true_trans, kind='strict')/100.
+        pctrank = 1.-percentileofscore(dists, true_trans, kind='strict')/100. # use strict so lag of 1 yields 1.00 percentile
         all_pcts.append(pctrank) # percentile rank within each list
 
-        recall_cluster_values[recall_serial_pos[ridx]] = np.nan
+        recall_cluster_values[recall_serial_pos[ridx]] = np.nan # used serialpos get a NaN so won't be included in %ile
 
     return all_pcts
 
