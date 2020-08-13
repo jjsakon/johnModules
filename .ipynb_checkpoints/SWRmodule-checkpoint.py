@@ -267,11 +267,10 @@ def get_elec_regions(tal_struct):
                     continue
                 else:
                     pass
-            if 'ind' in e.dtype.names:
-                if (e['ind']['region'] is not None) and (len(e['ind']['region'])>1) and \
-                   (e['ind']['region'] not in 'None') and (e['ind']['region'] not in 'nan'):
-                    regs.append(e['ind']['region'].lower())
-                    atlas_type.append('ind')
+            if 'wb' in e.dtype.names:
+                if (e['wb']['region'] is not None) and (len(e['wb']['region'])>1):
+                    regs.append(e['wb']['region'].lower())
+                    atlas_type.append('wb')
                     continue
                 else:
                     pass
@@ -281,14 +280,15 @@ def get_elec_regions(tal_struct):
                     atlas_type.append('dk')
                     continue
                 else:
-                    pass                
-            if 'wb' in e.dtype.names:
-                if (e['wb']['region'] is not None) and (len(e['wb']['region'])>1):
-                    regs.append(e['wb']['region'].lower())
-                    atlas_type.append('wb')
+                    pass 
+            if 'ind' in e.dtype.names:
+                if (e['ind']['region'] is not None) and (len(e['ind']['region'])>1) and \
+                   (e['ind']['region'] not in 'None') and (e['ind']['region'] not in 'nan'):
+                    regs.append(e['ind']['region'].lower())
+                    atlas_type.append('ind')
                     continue
                 else:
-                    pass
+                    pass               
             else:                
                 regs.append('')
                 atlas_type.append('No atlas')
@@ -358,7 +358,9 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
 #      mean and SD computed across entire experimental duration to define the threshold for event detection
 #      Events from original (squared but unclipped) signal >4 SD above baseline were selected as candidate SWR events. 
 #      Duration expanded until ripple power <2 SD. Events <20 ms or >200 ms excluded. Adjacent events <30 ms separation (peak-to-peak) merged.
-    from scipy.signal import firwin,filtfilt,kaiserord
+    from scipy.signal import firwin,filtfilt,kaiserord,convolve2d
+    
+    artifact_buffer = 100 # ms around IED events to remove SWRs
     sr_factor = 1000/sr
     ripple_min = 20/sr_factor # convert each to ms
     ripple_max = 250/sr_factor #200/sr_factor
@@ -382,7 +384,8 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     candidate_thresh = mean_detection_thresh+4*std_detection_thresh
     expansion_thresh = mean_detection_thresh+2*std_detection_thresh
     ripplelogic = orig_eeg_rip >= candidate_thresh
-    # remove IEDs detected from Vaz algo...maybe should do this after expansion to 2SD??
+    # remove IEDs detected from Norman 25-60 algo...maybe should do this after expansion to 2SD??
+    iedlogic = convolve2d(iedlogic,np.ones((1,artifact_buffer)),'same')>0 # expand to +/- 50 ms from each ied point
     ripplelogic[iedlogic==1] = 0 
     
     # expand out to 2SD around surviving events
@@ -567,6 +570,11 @@ def fastSmooth(a,window_size): # I ended up not using this one. It's what Norman
     return np.concatenate((  start , out0, stop  ))
 
 def triangleSmooth(data,smoothing_triangle): # smooth data with triangle filter using padded edges
+    
+    # problem with this smoothing is when there's a point on the edge it gives too much weight to 
+    # first 2 points (3rd is okay). E.g. for a 1 on the edge of all 0s it gives 0.66, 0.33, 0.11
+    # while for a 1 in the 2nd position of all 0s it gives 0.22, 0.33, 0.22, 0.11 (as you'd want)
+    # so make sure you don't use data in first 2 or last 2 positions since that 0.66/0.33 is overweighted
     
     factor = smoothing_triangle-3 # factor is how many points from middle does triangle go?
     # this all just gets the triangle for given smoothing_triangle length
@@ -774,7 +782,7 @@ def GetElectrodes(sub,start,stop):
 def MakeLocationFilter(scheme, location):
     return [location in s for s in [s if s else '' for s in scheme.iloc()[:]['ind.region']]]
 
-def ClusterRun(function, parameter_list, max_cores=50):
+def ClusterRun(function, parameter_list, max_cores=100):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -802,8 +810,9 @@ def ClusterRun(function, parameter_list, max_cores=50):
     #...Nora said it doesn't work tho and no sign it does
     # can also try increasing cores_per_job to >1, but should also reduce num_jobs to not hog
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5 for encoding at points
+    # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=num_cores, cores_per_job=4, \
+        num_jobs=num_cores, cores_per_job=1, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
