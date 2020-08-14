@@ -245,46 +245,145 @@ def get_bp_tal_struct(sub, montage, localization):
     
     return tal_struct, bipolar_pairs, monopolar_channels
 
-def get_elec_regions(tal_struct):
+# def get_elec_regions(tal_struct): # old version from Ethan
+    
+#     regs = []    
+#     atlas_type = []
+#     for num,e in enumerate(tal_struct['atlases']):
+#         try:
+#             if 'stein' in e.dtype.names:
+#                 if (e['stein']['region'] is not None) and (len(e['stein']['region'])>1) and \
+#                    (e['stein']['region'] not in 'None') and (e['stein']['region'] not in 'nan'):
+#                     regs.append(e['stein']['region'].lower())
+#                     atlas_type.append('stein')
+#                     continue
+#                 else:
+#                     pass
+#             if 'das' in e.dtype.names:
+#                 if (e['das']['region'] is not None) and (len(e['das']['region'])>1) and \
+#                    (e['das']['region'] not in 'None') and (e['das']['region'] not in 'nan'):
+#                     regs.append(e['das']['region'].lower())
+#                     atlas_type.append('das')
+#                     continue
+#                 else:
+#                     pass
+#             if 'wb' in e.dtype.names:
+#                 if (e['wb']['region'] is not None) and (len(e['wb']['region'])>1):
+#                     regs.append(e['wb']['region'].lower())
+#                     atlas_type.append('wb')
+#                     continue
+#                 else:
+#                     pass
+#             if 'dk' in e.dtype.names:
+#                 if (e['dk']['region'] is not None) and (len(e['dk']['region'])>1):
+#                     regs.append(e['dk']['region'].lower())
+#                     atlas_type.append('dk')
+#                     continue
+#                 else:
+#                     pass 
+#             if 'ind' in e.dtype.names:
+#                 if (e['ind']['region'] is not None) and (len(e['ind']['region'])>1) and \
+#                    (e['ind']['region'] not in 'None') and (e['ind']['region'] not in 'nan'):
+#                     regs.append(e['ind']['region'].lower())
+#                     atlas_type.append('ind')
+#                     continue
+#                 else:
+#                     pass               
+#             else:                
+#                 regs.append('')
+#                 atlas_type.append('No atlas')
+#         except AttributeError:
+#             regs.append('')
+            
+#     return np.array(regs),np.array(atlas_type)
+
+def get_elec_regions(tal_struct,localizations): # new version after consulting with Paul 2020-08-13
+    # suggested order to use regions is: stein->das->MTL->wb->mni
+    
+    # unlike previous version this inputs tal_struct (pairs.json as a recArray) and localizations.json like this:
+    # pairs = reader.load('pairs')
+    # localizations = reader.load('localization')
     
     regs = []    
     atlas_type = []
-    for num,e in enumerate(tal_struct['atlases']):
+    loc_MTL_names = np.array(localizations['atlases.mtl']['pairs']) # MTL field from pairs in localization.json
+    loc_dk_names = np.array(localizations['atlases.dk']['pairs']) #dk from same
+    loc_wb_names = np.array(localizations['atlases.whole_brain']['pairs']) #wb from same 
+
+    if len(tal_struct) != len(loc_MTL_names):
+        print('localization.json pairs is not the same length as tal_struct (pairs.json)')
+        sys.exit()
+
+    for pair_ct in range(len(tal_struct)):
         try:
-            if 'stein' in e.dtype.names:
-                if (e['stein']['region'] is not None) and (len(e['stein']['region'])>1) and \
-                   (e['stein']['region'] not in 'None') and (e['stein']['region'] not in 'nan'):
-                    regs.append(e['stein']['region'].lower())
+            pair_atlases = tal_struct[pair_ct].atlases
+
+            if 'stein' in pair_atlases.dtype.names:
+                if (pair_atlases['stein']['region'] is not None) and (len(pair_atlases['stein']['region'])>1) and \
+                   (pair_atlases['stein']['region'] not in 'None') and (pair_atlases['stein']['region'] not in 'nan'):
+                    regs.append(pair_atlases['stein']['region'].lower())
                     atlas_type.append('stein')
                     continue
                 else:
                     pass
-            if 'das' in e.dtype.names:
-                if (e['das']['region'] is not None) and (len(e['das']['region'])>1) and \
-                   (e['das']['region'] not in 'None') and (e['das']['region'] not in 'nan'):
-                    regs.append(e['das']['region'].lower())
+            if 'das' in pair_atlases.dtype.names:
+                if (pair_atlases['das']['region'] is not None) and (len(pair_atlases['das']['region'])>1) and \
+                   (pair_atlases['das']['region'] not in 'None') and (pair_atlases['das']['region'] not in 'nan'):
+                    regs.append(pair_atlases['das']['region'].lower())
                     atlas_type.append('das')
                     continue
                 else:
                     pass
-            if 'wb' in e.dtype.names:
-                if (e['wb']['region'] is not None) and (len(e['wb']['region'])>1):
-                    regs.append(e['wb']['region'].lower())
+            # 'MTL' from localization.json
+            if loc_MTL_names[pair_ct] is not '':
+                if str(loc_MTL_names[pair_ct]) is not 'nan': # looking for "MTL" field in localizations.json
+                    regs.append(loc_MTL_names[pair_ct].lower())
+                    atlas_type.append('MTL')
+                    continue
+                else:
+                    pass
+            # 'whole_brain' from localization.json
+            if loc_wb_names[pair_ct] is not '':
+                if str(loc_wb_names[pair_ct]) is not 'nan': # looking for "MTL" field in localizations.json
+                    regs.append(loc_wb_names[pair_ct].lower())
+                    atlas_type.append('wb_localization')
+                    continue
+                else:
+                    pass
+            if 'wb' in pair_atlases.dtype.names:
+                if (pair_atlases['wb']['region'] is not None) and (len(pair_atlases['wb']['region'])>1):
+                    regs.append(pair_atlases['wb']['region'].lower())
                     atlas_type.append('wb')
                     continue
                 else:
                     pass
-            if 'dk' in e.dtype.names:
-                if (e['dk']['region'] is not None) and (len(e['dk']['region'])>1):
-                    regs.append(e['dk']['region'].lower())
-                    atlas_type.append('dk')
+            # 'dk' from localization.json
+            if loc_dk_names[pair_ct] is not '':
+                if str(loc_dk_names[pair_ct]) is not 'nan': # looking for "dk" field in localizations.json
+                    regs.append(loc_dk_names[pair_ct].lower())
+                    atlas_type.append('dk_localization')
                     continue
                 else:
-                    pass 
-            if 'ind' in e.dtype.names:
-                if (e['ind']['region'] is not None) and (len(e['ind']['region'])>1) and \
-                   (e['ind']['region'] not in 'None') and (e['ind']['region'] not in 'nan'):
-                    regs.append(e['ind']['region'].lower())
+                    pass
+            if 'dk' in pair_atlases.dtype.names:
+                if (pair_atlases['dk']['region'] is not None) and (len(pair_atlases['dk']['region'])>1):
+                    regs.append(pair_atlases['dk']['region'].lower())
+                    atlas_type.append('dk_pairs')
+                    continue
+                else:
+                    pass
+            if 'ind.corrected' in pair_atlases.dtype.names:
+                if (pair_atlases['ind.corrected']['region'] is not None) and (len(pair_atlases['ind.corrected']['region'])>1) and \
+                   (pair_atlases['ind.corrected']['region'] not in 'None') and (pair_atlases['ind.corrected']['region'] not in 'nan'):
+                    regs.append(pair_atlases['ind.corrected']['region'].lower())
+                    atlas_type.append('ind.corrected')
+                    continue
+                else:
+                    pass  
+            if 'ind' in pair_atlases.dtype.names:
+                if (pair_atlases['ind']['region'] is not None) and (len(pair_atlases['ind']['region'])>1) and \
+                   (pair_atlases['ind']['region'] not in 'None') and (pair_atlases['ind']['region'] not in 'nan'):
+                    regs.append(pair_atlases['ind']['region'].lower())
                     atlas_type.append('ind')
                     continue
                 else:
