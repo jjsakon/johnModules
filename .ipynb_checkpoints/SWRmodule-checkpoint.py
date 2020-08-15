@@ -297,7 +297,8 @@ def get_bp_tal_struct(sub, montage, localization):
             
 #     return np.array(regs),np.array(atlas_type)
 
-def get_elec_regions(tal_struct,localizations): # new version after consulting with Paul 2020-08-13
+def get_elec_regions(tal_struct,localizations,pairs): 
+    # new version after consulting with Paul 2020-08-13
     # suggested order to use regions is: stein->das->MTL->wb->mni
     
     # unlike previous version this inputs tal_struct (pairs.json as a recArray) and localizations.json like this:
@@ -306,69 +307,84 @@ def get_elec_regions(tal_struct,localizations): # new version after consulting w
     
     regs = []    
     atlas_type = []
-    loc_MTL_names = np.array(localizations['atlases.mtl']['pairs']) # MTL field from pairs in localization.json
-    loc_dk_names = np.array(localizations['atlases.dk']['pairs']) #dk from same
-    loc_wb_names = np.array(localizations['atlases.whole_brain']['pairs']) #wb from same 
+    pair_number = []
+    has_stein_das = 0
+    # if localization.json exists get the names from each atlas
+    if len(localizations) > 1: 
+        # pairs that were recorded and possible pairs from the localization are typically not the same.
+        # so need to translate the localization region names to the pairs...which I think is easiest to just do here
+        loc_MTL_names = np.array(localizations['atlases.mtl']['pairs']) # MTL field from pairs in localization.json
+        loc_dk_names = np.array(localizations['atlases.dk']['pairs']) #dk from same
+        loc_wb_names = np.array(localizations['atlases.whole_brain']['pairs']) #wb from same 
+        # get an index for every pair in pairs
+        loc_to_pairs_idxs = getLocalizationToPairsTranslation(pairs,localizations)
+        import ipdb; ipdb.set_trace()
 
-    if len(tal_struct) != len(loc_MTL_names):
-        print('localization.json pairs is not the same length as tal_struct (pairs.json)')
-        sys.exit()
+    else:
+        loc_MTL_names = 'nan'; loc_dk_names = 'nan'; loc_wb_names = 'nan'
 
     for pair_ct in range(len(tal_struct)):
         try:
+            pair_number.append(pair_ct) # just to keep track of what pair this was in subject
             pair_atlases = tal_struct[pair_ct].atlases
-
+            
             if 'stein' in pair_atlases.dtype.names:
                 if (pair_atlases['stein']['region'] is not None) and (len(pair_atlases['stein']['region'])>1) and \
-                   (pair_atlases['stein']['region'] not in 'None') and (pair_atlases['stein']['region'] not in 'nan'):
+                   (pair_atlases['stein']['region'] not in 'None') and (pair_atlases['stein']['region'] != 'nan'):
                     regs.append(pair_atlases['stein']['region'].lower())
                     atlas_type.append('stein')
+                    has_stein_das = 1 # temporary thing just to see where stein/das stopped annotating
                     continue
                 else:
                     pass
             if 'das' in pair_atlases.dtype.names:
                 if (pair_atlases['das']['region'] is not None) and (len(pair_atlases['das']['region'])>1) and \
-                   (pair_atlases['das']['region'] not in 'None') and (pair_atlases['das']['region'] not in 'nan'):
+                   (pair_atlases['das']['region'] not in 'None') and (pair_atlases['das']['region'] != 'nan'):
                     regs.append(pair_atlases['das']['region'].lower())
                     atlas_type.append('das')
+                    has_stein_das = 1
                     continue
                 else:
                     pass
-            # 'MTL' from localization.json
-            if loc_MTL_names[pair_ct] is not '':
-                if str(loc_MTL_names[pair_ct]) is not 'nan': # looking for "MTL" field in localizations.json
-                    regs.append(loc_MTL_names[pair_ct].lower())
-                    atlas_type.append('MTL')
-                    continue
-                else:
-                    pass
-            # 'whole_brain' from localization.json
-            if loc_wb_names[pair_ct] is not '':
-                if str(loc_wb_names[pair_ct]) is not 'nan': # looking for "MTL" field in localizations.json
-                    regs.append(loc_wb_names[pair_ct].lower())
-                    atlas_type.append('wb_localization')
-                    continue
-                else:
-                    pass
+            if len(localizations) > 1:             # 'MTL' from localization.json
+                if loc_MTL_names[pair_ct] != '':
+                    if str(loc_MTL_names[pair_ct]) != 'nan': # looking for "MTL" field in localizations.json
+                        regs.append(loc_MTL_names[pair_ct].lower())
+                        atlas_type.append('MTL_localization')
+                        continue
+                    else:
+                        pass
+            if len(localizations) > 1:             # 'whole_brain' from localization.json
+                if loc_wb_names[pair_ct] != '' and loc_wb_names[pair_ct] != ' ':
+                    if str(loc_wb_names[pair_ct]) != 'nan': # looking for "MTL" field in localizations.json
+                        regs.append(loc_wb_names[pair_ct].lower())
+                        atlas_type.append('wb_localization')
+                        continue
+                    else:
+                        pass
             if 'wb' in pair_atlases.dtype.names:
-                if (pair_atlases['wb']['region'] is not None) and (len(pair_atlases['wb']['region'])>1):
+                if (pair_atlases['wb']['region'] is not None) and (len(pair_atlases['wb']['region'])>1) and \
+                   (pair_atlases['wb']['region'] not in 'None') and (pair_atlases['wb']['region'] != 'nan'):
                     regs.append(pair_atlases['wb']['region'].lower())
                     atlas_type.append('wb')
                     continue
                 else:
                     pass
-            # 'dk' from localization.json
-            if loc_dk_names[pair_ct] is not '':
-                if str(loc_dk_names[pair_ct]) is not 'nan': # looking for "dk" field in localizations.json
-                    regs.append(loc_dk_names[pair_ct].lower())
-                    atlas_type.append('dk_localization')
-                    continue
-                else:
-                    pass
+            if len(localizations) > 1:             # 'dk' from localization.json
+                if loc_dk_names[pair_ct] != '':
+                    if str(loc_dk_names[pair_ct]) != 'nan': # looking for "dk" field in localizations.json
+                        regs.append(loc_dk_names[pair_ct].lower())
+                        atlas_type.append('dk_localization')
+                        continue
+                    else:
+                        pass
+#             if pair_ct == 29:
+#                 import ipdb; ipdb.set_trace()
             if 'dk' in pair_atlases.dtype.names:
-                if (pair_atlases['dk']['region'] is not None) and (len(pair_atlases['dk']['region'])>1):
+                if (pair_atlases['dk']['region'] is not None) and (len(pair_atlases['dk']['region'])>1) and \
+                   (pair_atlases['dk']['region'] not in 'None') and (pair_atlases['dk']['region'] != 'nan'):
                     regs.append(pair_atlases['dk']['region'].lower())
-                    atlas_type.append('dk_pairs')
+                    atlas_type.append('dk')
                     continue
                 else:
                     pass
@@ -382,19 +398,40 @@ def get_elec_regions(tal_struct,localizations): # new version after consulting w
                     pass  
             if 'ind' in pair_atlases.dtype.names:
                 if (pair_atlases['ind']['region'] is not None) and (len(pair_atlases['ind']['region'])>1) and \
-                   (pair_atlases['ind']['region'] not in 'None') and (pair_atlases['ind']['region'] not in 'nan'):
+                   (pair_atlases['ind']['region'] not in 'None') and (pair_atlases['ind']['region'] != 'nan'):
                     regs.append(pair_atlases['ind']['region'].lower())
                     atlas_type.append('ind')
                     continue
                 else:
                     pass               
             else:                
-                regs.append('')
+                regs.append('No atlas')
                 atlas_type.append('No atlas')
         except AttributeError:
             regs.append('')
             
-    return np.array(regs),np.array(atlas_type)
+    return np.array(regs),np.array(atlas_type),np.array(pair_number),has_stein_das
+
+def getLocalizationToPairsTranslation(pairs,localizations):
+    # localizations is all the possible contacts and bipolar pairs locations
+    # pairs is the actual bipolar pairs recorded (plugged in to a certain montage of the localization)
+    # this goes through all the recorded pairs and finds the index of them in the localization pairs
+    loc_pairs = localizations.type.pairs
+    loc_pair_labels = np.array(loc_pairs.index)
+
+    loc_to_pairs_idxs = []
+    for pair in pairs.label:
+        split_pair = pair.split('-') # split into list of 2
+        idx = np.where([split_pair==list(lp) for lp in loc_pair_labels])[0]
+        if loc_pair_labels[idx].size==0: # if didn't find it, check for reverse
+            split_pair.reverse()
+            temp_mask = [split_pair==list(lp) for lp in loc_pair_labels]
+            idx = np.where(temp_mask)[0]
+            if len(idx) == 0:
+                idx = ' '
+        loc_to_pairs_idxs.extend(idx)
+
+    return loc_to_pairs_idxs
 
 def get_tal_distmat(tal_struct):
         
