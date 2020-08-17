@@ -6,10 +6,11 @@ Can import like so: >>>from brain_labels import MTL_labels, LTC_labels, PFC_labe
 2020-02-14 JS
 '''
 
-MTL_stein = ['left ca1','left ca2','left ca3','left dg','left sub','left prc','left ec','left phc',
-             'right ca1','right ca2','right ca3','right dg','right sub','right prc','right ec',
-             'right phc','left mtl wm','right mtl wm','left amy','right amy','ca1'] # including amygdala in MTL
-LTC_stein = ['left middle temporal gyrus','right middle temporal gyrus','right stg']
+MTL_stein = ['left ca1','left ca2','left ca3','left dg','left sub','left prc','left ec','left phc','left mtl wm',
+             'right ca1','right ca2','right ca3','right dg','right sub','right prc','right ec','right phc','right mtl wm',
+             'left amy','right amy'] # including amygdala in MTL
+LTC_stein = ['left middle temporal gyrus','left stg','left mtg','left itg','left inferior temporal gyrus','left superior temporal gyrus', # never saw last 2 but why not?
+             'right middle temporal gyrus','right stg','right mtg','right itg','right inferior temporal gyrus','right superior temporal gyrus'] #same
 PFC_stein = ['left caudal middle frontal cortex','left dlpfc','left precentral gyrus','right precentral gyrus',
              'right caudal middle frontal cortex','right dlpfc','right superior frontal gyrus']
 cingulate_stein = ['left acg','left mcg','left pcg','right acg','right pcg']
@@ -22,10 +23,23 @@ other_stein = ['left precentral gyrus','none','right insula','right precentral g
 # -dk comes from the same DesikanKilliany(2006) paper
 # -wb (whole-brain) appears to come from FreeSurfer labels here: 
 # https://www.slicer.org/wiki/Documentation/4.1/SlicerApplication/LookupTables/Freesurfer_labels
-MTL_ind = ['parahippocampal','entorhinal','temporalpole',
-           'left hippocampus','right hippocampus','left ent entorhinal area','left tmp temporal pole', # whole-brain names
-          'right ent entorhinal area','right tmp temporal pole'] # haven't seen but put right in too
-LTC_ind = ['bankssts','middletemporal','inferiortemporal','superiortemporal'] # first 4 defined by Ezzyat NatComm 2018...unsure about bankssts tho
+# although Sandy Das pointed to http://www.neuromorphometrics.com/2012_MICCAI_Challenge_Data.html
+# 2020-08-17 updated these with new values from loading wb and MTL fields in localization.json pairs
+MTL_ind = ['parahippocampal','entorhinal','temporalpole',   
+           ' left amygdala',' left ent entorhinal area',' left hippocampus',' left phg parahippocampal gyrus',' left tmp temporal pole', # whole-brain names
+           ' right amygdala',' right ent entorhinal area',' right hippocampus',' right phg parahippocampal gyrus',' right tmp temporal pole',
+           'left amygdala','left ent entorhinal area','left hippocampus','left phg parahippocampal gyrus','left tmp temporal pole',
+           'right amygdala','right ent entorhinal area','right hippocampus','right phg parahippocampal gyrus','right tmp temporal pole',
+           '"ba35"','"ba36"','"ca1"', '"dg"', '"erc"', '"phc"', '"sub"',
+           'ba35', 'ba36','ca1','dg','erc','phc','sub']
+LTC_ind = ['bankssts','middletemporal','inferiortemporal','superiortemporal', # first 4 defined by Ezzyat NatComm 2018...unsure about bankssts tho
+           'left itg inferior temporal gyrus','left mtg middle temporal gyrus','left stg superior temporal gyrus',
+           ' left itg inferior temporal gyrus',' left mtg middle temporal gyrus',' left stg superior temporal gyrus', 
+           'right itg inferior temporal gyrus','right mtg middle temporal gyrus','right stg superior temporal gyrus', 
+           ' right itg inferior temporal gyrus',' right mtg middle temporal gyrus',' right stg superior temporal gyrus']
+           # leaving out 'left/right ttg transverse temporal gyrus' and 'transversetemporal'
+           
+# havne't below yet with new values from localization.json (the wb ones)
 PFC_ind = ['caudalmiddlefrontal','frontalpole','lateralorbitofrontal','medialorbitofrontal','parsopercularis',
           'parsorbitalis','parstriangularis','rostralmiddlefrontal','superiorfrontal']
 cingulate_ind = ['caudalanteriorcingulate','isthmuscingulate','posteriorcingulate','rostralanteriorcingulate']

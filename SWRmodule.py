@@ -313,9 +313,7 @@ def get_elec_regions(tal_struct,localizations,pairs):
     if len(localizations) > 1: 
         # pairs that were recorded and possible pairs from the localization are typically not the same.
         # so need to translate the localization region names to the pairs...which I think is easiest to just do here
-        temp_loc_MTL_names = localizations['atlases.mtl']['pairs'] # MTL field from pairs in localization.json
-        temp_loc_dk_names = localizations['atlases.dk']['pairs'] #dk from same
-        temp_loc_wb_names = localizations['atlases.whole_brain']['pairs'] #wb from same 
+
         # get an index for every pair in pairs
         loc_translation = getPairsFromLocalizationTranslation(pairs,localizations)
         loc_dk_names = ['' for _ in range(len(pairs))]
@@ -323,11 +321,13 @@ def get_elec_regions(tal_struct,localizations,pairs):
         loc_wb_names = copy(loc_dk_names)
         for i,loc in enumerate(loc_translation):
             if loc != ' ': # set it to this when there was no localization.pairs
-                loc_MTL_names[loc] = temp_loc_MTL_names[i]
-                loc_dk_names[loc] = temp_loc_dk_names[i]
-                loc_wb_names[loc] = temp_loc_wb_names[i] 
-    else:
-        loc_MTL_names = 'nan'; loc_dk_names = 'nan'; loc_wb_names = 'nan'
+                if 'atlases.mtl' in localizations: # a few (like 5) of the localization.pairs don't have the MTL atlas
+                    loc_MTL_names[loc] = localizations['atlases.mtl']['pairs'][i] # MTL field from pairs in localization.json
+                    has_MTL = 1
+                else:
+                    has_MTL = 0 # so can skip in below
+                loc_dk_names[loc] = localizations['atlases.dk']['pairs'][i]
+                loc_wb_names[loc] = localizations['atlases.whole_brain']['pairs'][i]         
     for pair_ct in range(len(tal_struct)):
         try:
             pair_number.append(pair_ct) # just to keep track of what pair this was in subject
@@ -351,7 +351,7 @@ def get_elec_regions(tal_struct,localizations,pairs):
                     continue
                 else:
                     pass
-            if len(localizations) > 1:             # 'MTL' from localization.json
+            if len(localizations) > 1 and has_MTL==1:             # 'MTL' from localization.json
                 if loc_MTL_names[pair_ct] != '' and loc_MTL_names[pair_ct] != ' ':
                     if str(loc_MTL_names[pair_ct]) != 'nan': # looking for "MTL" field in localizations.json
                         regs.append(loc_MTL_names[pair_ct].lower())
@@ -391,7 +391,7 @@ def get_elec_regions(tal_struct,localizations,pairs):
                     continue
                 else:
                     pass
-            if 'ind.corrected' in pair_atlases.dtype.names:
+            if 'ind.corrected' in pair_atlases.dtype.names: # I don't think this ever has a region label but just in case
                 if (pair_atlases['ind.corrected']['region'] is not None) and (len(pair_atlases['ind.corrected']['region'])>1) and \
                    (pair_atlases['ind.corrected']['region'] not in 'None') and (pair_atlases['ind.corrected']['region'] not in 'nan'):
                     regs.append(pair_atlases['ind.corrected']['region'].lower())
@@ -404,6 +404,8 @@ def get_elec_regions(tal_struct,localizations,pairs):
                    (pair_atlases['ind']['region'] not in 'None') and (pair_atlases['ind']['region'] != 'nan'):
                     regs.append(pair_atlases['ind']['region'].lower())
                     atlas_type.append('ind')
+                    # [tal_struct[i].atlases.ind.region for i in range(len(tal_struct))] # if you want to see ind atlases for comparison to above
+                    # have to run this first though to work in ipdb: globals().update(locals())
                     continue
                 else:
                     pass               
@@ -422,10 +424,10 @@ def getPairsFromLocalizationTranslation(pairs,localizations):
 
     loc_pairs = localizations.type.pairs
     loc_pairs = np.array(loc_pairs.index)
-    split_pairs = [pair.split('-') for pair in pairs.label]
-
+    split_pairs = [pair.upper().split('-') for pair in pairs.label] # pairs.json should be uppercase anyway but just in case
     pairs_to_loc_idxs = []
     for loc_pair in loc_pairs:
+        loc_pair = [loc.upper() for loc in loc_pair] # pairs.json is always capitalized so capitalize location.pairs to match (e.g. occasionally an Li was changed to an LI)
         loc_pair = list(loc_pair)
         idx = (np.where([loc_pair==split_pair for split_pair in split_pairs])[0])
         if len(idx) == 0:
@@ -437,24 +439,24 @@ def getPairsFromLocalizationTranslation(pairs,localizations):
 
     return pairs_to_loc_idxs
 
-def getLocalizationToPairsTranslation(pairs,localizations):
-    # this does the opposite of above...don't think I'll use this one but accidentally made it first so keep it JIC
-    loc_pairs = localizations.type.pairs
-    loc_pair_labels = np.array(loc_pairs.index)
+# def getLocalizationToPairsTranslation(pairs,localizations):
+#     # this does the opposite of above...don't think I'll use this one but accidentally made it first so keep it JIC
+#     loc_pairs = localizations.type.pairs
+#     loc_pair_labels = np.array(loc_pairs.index)
 
-    loc_to_pairs_idxs = []
-    for pair in pairs.label:
-        split_pair = pair.split('-') # split into list of 2
-        idx = np.where([split_pair==list(lp) for lp in loc_pair_labels])[0]
-        if loc_pair_labels[idx].size==0: # if didn't find it, check for reverse
-            split_pair.reverse()
-            temp_mask = [split_pair==list(lp) for lp in loc_pair_labels]
-            idx = np.where(temp_mask)[0]
-            if len(idx) == 0:
-                idx = ' '
-        loc_to_pairs_idxs.extend(idx)
+#     loc_to_pairs_idxs = []
+#     for pair in pairs.label:
+#         split_pair = pair.split('-') # split into list of 2
+#         idx = np.where([split_pair==list(lp) for lp in loc_pair_labels])[0]
+#         if loc_pair_labels[idx].size==0: # if didn't find it, check for reverse
+#             split_pair.reverse()
+#             temp_mask = [split_pair==list(lp) for lp in loc_pair_labels]
+#             idx = np.where(temp_mask)[0]
+#             if len(idx) == 0:
+#                 idx = ' '
+#         loc_to_pairs_idxs.extend(idx)
 
-    return loc_to_pairs_idxs
+#     return loc_to_pairs_idxs
 
 def get_tal_distmat(tal_struct):
         
