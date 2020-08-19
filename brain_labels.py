@@ -1,9 +1,11 @@
 '''
+2020-02-14 JS
 All regions I've been able to find in PS tasks, either in the stim. electrode (see below)
 or in the other electrodes (see get_elec_regions). These can be found in a manner like
 the "unique electrode region labels" cell in dataQuality.ipynb
 Can import like so: >>>from brain_labels import MTL_labels, LTC_labels, PFC_labels, OTHER_labels, ALL_labels
-2020-02-14 JS
+2020-08-17 JS updated with new labels now that I'm loading localization.json pairs in addition to usual pairs
+see SWRmodule for details on getting the region names and the order or operations for differnt atlases
 '''
 
 MTL_stein = ['left ca1','left ca2','left ca3','left dg','left sub','left prc','left ec','left phc','left mtl wm',

@@ -70,6 +70,13 @@ def normFFT(eeg):
     fft_eeg = 1/N*np.abs(fft(eeg)[:N//2]) # should really normalize by Time/sample rate (e.g. 4 s of eeg/500 hz sampling=8)
     return fft_eeg
 
+def getMTLregions(MTL_labels):
+    # see brain_labels.py for MTL_labels
+    HPC_labels = [MTL_labels[i] for i in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]] # all labels within HPC
+    ENT_labels = [MTL_labels[i] for i in [6,15,21,24,29,34,39,47,54]] # all labels within entorhinal
+    PHC_labels = [MTL_labels[i] for i in [7,16,20,26,31,36,41,48,55]] # all labels within parahippocampal
+    return HPC_labels,ENT_labels,PHC_labels    
+
 def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period):
     # get strings for path name for save and loading cluster data
     if remove_soz_ictal == False:
@@ -297,6 +304,28 @@ def get_bp_tal_struct(sub, montage, localization):
             
 #     return np.array(regs),np.array(atlas_type)
 
+def Loc2PairsTranslation(pairs,localizations):
+    # localizations is all the possible contacts and bipolar pairs locations
+    # pairs is the actual bipolar pairs recorded (plugged in to a certain montage of the localization)
+    # this finds the indices that translate the localization pairs to the pairs/tal_struct
+
+    loc_pairs = localizations.type.pairs
+    loc_pairs = np.array(loc_pairs.index)
+    split_pairs = [pair.upper().split('-') for pair in pairs.label] # pairs.json should be uppercase anyway but just in case
+    pairs_to_loc_idxs = []
+    for loc_pair in loc_pairs:
+        loc_pair = [loc.upper() for loc in loc_pair] # pairs.json is always capitalized so capitalize location.pairs to match (e.g. occasionally an Li was changed to an LI)
+        loc_pair = list(loc_pair)
+        idx = (np.where([loc_pair==split_pair for split_pair in split_pairs])[0])
+        if len(idx) == 0:
+            loc_pair.reverse() # check for the reverse since sometimes the electrodes are listed the other way
+            idx = (np.where([loc_pair==split_pair for split_pair in split_pairs])[0])
+            if len(idx) == 0:
+                idx = ' '
+        pairs_to_loc_idxs.extend(idx)
+
+    return pairs_to_loc_idxs # these numbers you see are the index in PAIRS frame that the localization.pairs region will get put
+
 def get_elec_regions(tal_struct,localizations,pairs): 
     # new version after consulting with Paul 2020-08-13
     # suggested order to use regions is: stein->das->MTL->wb->mni
@@ -315,7 +344,7 @@ def get_elec_regions(tal_struct,localizations,pairs):
         # so need to translate the localization region names to the pairs...which I think is easiest to just do here
 
         # get an index for every pair in pairs
-        loc_translation = getPairsFromLocalizationTranslation(pairs,localizations)
+        loc_translation = Loc2PairsTranslation(pairs,localizations)
         loc_dk_names = ['' for _ in range(len(pairs))]
         loc_MTL_names = copy(loc_dk_names) 
         loc_wb_names = copy(loc_dk_names)
@@ -327,21 +356,20 @@ def get_elec_regions(tal_struct,localizations,pairs):
                 else:
                     has_MTL = 0 # so can skip in below
                 loc_dk_names[loc] = localizations['atlases.dk']['pairs'][i]
-                loc_wb_names[loc] = localizations['atlases.whole_brain']['pairs'][i]         
+                loc_wb_names[loc] = localizations['atlases.whole_brain']['pairs'][i]   
     for pair_ct in range(len(tal_struct)):
         try:
             pair_number.append(pair_ct) # just to keep track of what pair this was in subject
             pair_atlases = tal_struct[pair_ct].atlases
-            
             if 'stein' in pair_atlases.dtype.names:
                 if (pair_atlases['stein']['region'] is not None) and (len(pair_atlases['stein']['region'])>1) and \
                    (pair_atlases['stein']['region'] not in 'None') and (pair_atlases['stein']['region'] != 'nan'):
                     regs.append(pair_atlases['stein']['region'].lower())
                     atlas_type.append('stein')
                     has_stein_das = 1 # temporary thing just to see where stein/das stopped annotating
-                    continue
+                    continue # back to top of for loop
                 else:
-                    pass
+                    pass # keep going in loop
             if 'das' in pair_atlases.dtype.names:
                 if (pair_atlases['das']['region'] is not None) and (len(pair_atlases['das']['region'])>1) and \
                    (pair_atlases['das']['region'] not in 'None') and (pair_atlases['das']['region'] != 'nan'):
@@ -359,6 +387,8 @@ def get_elec_regions(tal_struct,localizations,pairs):
                         continue
                     else:
                         pass
+                else:
+                    pass
             if len(localizations) > 1:             # 'whole_brain' from localization.json
                 if loc_wb_names[pair_ct] != '' and loc_wb_names[pair_ct] != ' ':
                     if str(loc_wb_names[pair_ct]) != 'nan': # looking for "MTL" field in localizations.json
@@ -367,6 +397,8 @@ def get_elec_regions(tal_struct,localizations,pairs):
                         continue
                     else:
                         pass
+                else:
+                    pass
             if 'wb' in pair_atlases.dtype.names:
                 if (pair_atlases['wb']['region'] is not None) and (len(pair_atlases['wb']['region'])>1) and \
                    (pair_atlases['wb']['region'] not in 'None') and (pair_atlases['wb']['region'] != 'nan'):
@@ -383,6 +415,8 @@ def get_elec_regions(tal_struct,localizations,pairs):
                         continue
                     else:
                         pass
+                else:
+                    pass
             if 'dk' in pair_atlases.dtype.names:
                 if (pair_atlases['dk']['region'] is not None) and (len(pair_atlases['dk']['region'])>1) and \
                    (pair_atlases['dk']['region'] not in 'None') and (pair_atlases['dk']['region'] != 'nan'):
@@ -405,39 +439,18 @@ def get_elec_regions(tal_struct,localizations,pairs):
                     regs.append(pair_atlases['ind']['region'].lower())
                     atlas_type.append('ind')
                     # [tal_struct[i].atlases.ind.region for i in range(len(tal_struct))] # if you want to see ind atlases for comparison to above
-                    # have to run this first though to work in ipdb: globals().update(locals())
+                    # have to run this first though to work in ipdb: globals().update(locals())                  
                     continue
                 else:
-                    pass               
-            else:                
+                    regs.append('No atlas')
+                    atlas_type.append('No atlas')
+            else: 
                 regs.append('No atlas')
                 atlas_type.append('No atlas')
         except AttributeError:
-            regs.append('')
-            
+            regs.append('error')
+            atlas_type.append('error')
     return np.array(regs),np.array(atlas_type),np.array(pair_number),has_stein_das
-
-def getPairsFromLocalizationTranslation(pairs,localizations):
-    # localizations is all the possible contacts and bipolar pairs locations
-    # pairs is the actual bipolar pairs recorded (plugged in to a certain montage of the localization)
-    # this finds the indices that translate the localization pairs to the pairs/tal_struct
-
-    loc_pairs = localizations.type.pairs
-    loc_pairs = np.array(loc_pairs.index)
-    split_pairs = [pair.upper().split('-') for pair in pairs.label] # pairs.json should be uppercase anyway but just in case
-    pairs_to_loc_idxs = []
-    for loc_pair in loc_pairs:
-        loc_pair = [loc.upper() for loc in loc_pair] # pairs.json is always capitalized so capitalize location.pairs to match (e.g. occasionally an Li was changed to an LI)
-        loc_pair = list(loc_pair)
-        idx = (np.where([loc_pair==split_pair for split_pair in split_pairs])[0])
-        if len(idx) == 0:
-            loc_pair.reverse() # check for the reverse since sometimes the electrodes are listed the other way
-            idx = (np.where([loc_pair==split_pair for split_pair in split_pairs])[0])
-            if len(idx) == 0:
-                idx = ' '
-        pairs_to_loc_idxs.extend(idx)
-
-    return pairs_to_loc_idxs
 
 # def getLocalizationToPairsTranslation(pairs,localizations):
 #     # this does the opposite of above...don't think I'll use this one but accidentally made it first so keep it JIC
