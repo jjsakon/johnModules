@@ -311,10 +311,10 @@ def Loc2PairsTranslation(pairs,localizations):
 
     loc_pairs = localizations.type.pairs
     loc_pairs = np.array(loc_pairs.index)
-    split_pairs = [pair.upper().split('-') for pair in pairs.label] # pairs.json should be uppercase anyway but just in case
+    split_pairs = [pair.upper().split('-') for pair in pairs.label] # pairs.json is usually upper anyway but things like "micro" are not
     pairs_to_loc_idxs = []
     for loc_pair in loc_pairs:
-        loc_pair = [loc.upper() for loc in loc_pair] # pairs.json is always capitalized so capitalize location.pairs to match (e.g. occasionally an Li was changed to an LI)
+        loc_pair = [loc.upper() for loc in loc_pair] # pairs.json is always capitalized so capitalize location.pairs to match (e.g. Li was changed to an LI)
         loc_pair = list(loc_pair)
         idx = (np.where([loc_pair==split_pair for split_pair in split_pairs])[0])
         if len(idx) == 0:
