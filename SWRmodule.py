@@ -338,6 +338,8 @@ def get_elec_regions(tal_struct,localizations,pairs):
     atlas_type = []
     pair_number = []
     has_stein_das = 0
+    
+    import ipdb; ipdb.set_trace()
     # if localization.json exists get the names from each atlas
     if len(localizations) > 1: 
         # pairs that were recorded and possible pairs from the localization are typically not the same.
