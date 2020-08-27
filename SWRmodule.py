@@ -326,11 +326,11 @@ def Loc2PairsTranslation(pairs,localizations):
 
     return pairs_to_loc_idxs # these numbers you see are the index in PAIRS frame that the localization.pairs region will get put
 
-def get_elec_regions(tal_struct,localizations,pairs): 
-    # new version after consulting with Paul 2020-08-13
+def get_elec_regions(localizations,pairs): 
+    # 2020-08-13 new version after consulting with Paul 
     # suggested order to use regions is: stein->das->MTL->wb->mni
     
-    # unlike previous version this inputs tal_struct (pairs.json as a recArray) and localizations.json like this:
+    # 2020-08-26 previous version input tal_struct (pairs.json as a recArray). Now input pairs.json and localizations.json like this:
     # pairs = reader.load('pairs')
     # localizations = reader.load('localization')
     
@@ -339,7 +339,6 @@ def get_elec_regions(tal_struct,localizations,pairs):
     pair_number = []
     has_stein_das = 0
     
-    import ipdb; ipdb.set_trace()
     # if localization.json exists get the names from each atlas
     if len(localizations) > 1: 
         # pairs that were recorded and possible pairs from the localization are typically not the same.
@@ -359,23 +358,29 @@ def get_elec_regions(tal_struct,localizations,pairs):
                     has_MTL = 0 # so can skip in below
                 loc_dk_names[loc] = localizations['atlases.dk']['pairs'][i]
                 loc_wb_names[loc] = localizations['atlases.whole_brain']['pairs'][i]   
-    for pair_ct in range(len(tal_struct)):
+    for pair_ct in range(len(pairs)):
         try:
             pair_number.append(pair_ct) # just to keep track of what pair this was in subject
-            pair_atlases = tal_struct[pair_ct].atlases
-            if 'stein' in pair_atlases.dtype.names:
-                if (pair_atlases['stein']['region'] is not None) and (len(pair_atlases['stein']['region'])>1) and \
-                   (pair_atlases['stein']['region'] not in 'None') and (pair_atlases['stein']['region'] != 'nan'):
-                    regs.append(pair_atlases['stein']['region'].lower())
+            pair_atlases = pairs.iloc[pair_ct] #tal_struct[pair_ct].atlases
+            if 'stein.region' in pair_atlases: # if 'stein' in pair_atlases.dtype.names:
+                test_region = str(pair_atlases['stein.region'])
+                if (test_region is not None) and (len(test_region)>1) and \
+                   (test_region not in 'None') and (test_region != 'nan'):
+                    regs.append(test_region.lower())
+#             if 'stein' in pair_atlases.dtype.names:  ### OLD WAY FROM TAL_STRUCT...leaving as example
+#                 if (pair_atlases['stein']['region'] is not None) and (len(pair_atlases['stein']['region'])>1) and \
+#                    (pair_atlases['stein']['region'] not in 'None') and (pair_atlases['stein']['region'] != 'nan'):
+#                     regs.append(pair_atlases['stein']['region'].lower())
                     atlas_type.append('stein')
                     has_stein_das = 1 # temporary thing just to see where stein/das stopped annotating
                     continue # back to top of for loop
                 else:
                     pass # keep going in loop
-            if 'das' in pair_atlases.dtype.names:
-                if (pair_atlases['das']['region'] is not None) and (len(pair_atlases['das']['region'])>1) and \
-                   (pair_atlases['das']['region'] not in 'None') and (pair_atlases['das']['region'] != 'nan'):
-                    regs.append(pair_atlases['das']['region'].lower())
+            if 'das.region' in pair_atlases:
+                test_region = str(pair_atlases['das.region'])
+                if (test_region is not None) and (len(test_region)>1) and \
+                   (test_region not in 'None') and (test_region != 'nan'):
+                    regs.append(test_region.lower())
                     atlas_type.append('das')
                     has_stein_das = 1
                     continue
@@ -401,10 +406,11 @@ def get_elec_regions(tal_struct,localizations,pairs):
                         pass
                 else:
                     pass
-            if 'wb' in pair_atlases.dtype.names:
-                if (pair_atlases['wb']['region'] is not None) and (len(pair_atlases['wb']['region'])>1) and \
-                   (pair_atlases['wb']['region'] not in 'None') and (pair_atlases['wb']['region'] != 'nan'):
-                    regs.append(pair_atlases['wb']['region'].lower())
+            if 'wb.region' in pair_atlases:
+                test_region = str(pair_atlases['wb.region'])
+                if (test_region is not None) and (len(test_region)>1) and \
+                   (test_region not in 'None') and (test_region != 'nan'):
+                    regs.append(test_region.lower())
                     atlas_type.append('wb')
                     continue
                 else:
@@ -419,26 +425,29 @@ def get_elec_regions(tal_struct,localizations,pairs):
                         pass
                 else:
                     pass
-            if 'dk' in pair_atlases.dtype.names:
-                if (pair_atlases['dk']['region'] is not None) and (len(pair_atlases['dk']['region'])>1) and \
-                   (pair_atlases['dk']['region'] not in 'None') and (pair_atlases['dk']['region'] != 'nan'):
-                    regs.append(pair_atlases['dk']['region'].lower())
+            if 'dk.region' in pair_atlases:
+                test_region = str(pair_atlases['dk.region'])
+                if (test_region is not None) and (len(test_region)>1) and \
+                   (test_region not in 'None') and (test_region != 'nan'):
+                    regs.append(test_region.lower())
                     atlas_type.append('dk')
                     continue
                 else:
                     pass
-            if 'ind.corrected' in pair_atlases.dtype.names: # I don't think this ever has a region label but just in case
-                if (pair_atlases['ind.corrected']['region'] is not None) and (len(pair_atlases['ind.corrected']['region'])>1) and \
-                   (pair_atlases['ind.corrected']['region'] not in 'None') and (pair_atlases['ind.corrected']['region'] not in 'nan'):
-                    regs.append(pair_atlases['ind.corrected']['region'].lower())
+            if 'ind.corrected.region' in pair_atlases: # I don't think this ever has a region label but just in case
+                test_region = str(pair_atlases['ind.corrected.region'])
+                if (test_region is not None) and (len(test_region)>1) and \
+                   (test_region not in 'None') and (test_region not in 'nan'):
+                    regs.append(test_region.lower())
                     atlas_type.append('ind.corrected')
                     continue
                 else:
                     pass  
-            if 'ind' in pair_atlases.dtype.names:
-                if (pair_atlases['ind']['region'] is not None) and (len(pair_atlases['ind']['region'])>1) and \
-                   (pair_atlases['ind']['region'] not in 'None') and (pair_atlases['ind']['region'] != 'nan'):
-                    regs.append(pair_atlases['ind']['region'].lower())
+            if 'ind.region' in pair_atlases:
+                test_region = str(pair_atlases['ind.region'])
+                if (test_region is not None) and (len(test_region)>1) and \
+                   (test_region not in 'None') and (test_region != 'nan'):
+                    regs.append(test_region.lower())
                     atlas_type.append('ind')
                     # [tal_struct[i].atlases.ind.region for i in range(len(tal_struct))] # if you want to see ind atlases for comparison to above
                     # have to run this first though to work in ipdb: globals().update(locals())                  
