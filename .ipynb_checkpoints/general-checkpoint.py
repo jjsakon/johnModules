@@ -13,6 +13,54 @@ def splitUpString(string,delimiter=''):
         split_array = np.array(list(map(float,string.split(delimiter))))
     return split_array
 
+def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
+    # make a pairwise comparison errorbar plot with swarm and FDR significance overlaid
+    # comp_data: list of vectors of pairwise comparison data
+    # comp_names: list of labels for each pairwise comparison
+    # col_names: list of 2 names: 1st is what is in data, 2nd is what the grouping of the labels 
+    
+    import pandas as pd
+    from scipy.stats import ttest_1samp
+    from statsmodels.stats.multitest import fdrcorrection
+    import matplotlib.pyplot as plt
+    import seaborn as sb
+
+    # make dataframe
+    comp_df = pd.DataFrame(columns=col_names)
+    for i in range(len(comp_data)):
+        temp = pd.DataFrame(columns=col_names)
+        temp['pairwise_data'] = comp_data[i]
+        temp['grouping'] = np.tile(comp_names[i],len(comp_data[i]))
+        comp_df = comp_df.append(temp,ignore_index=False, sort=True)
+
+    figSub,axSub = plt.subplots(1,1, figsize=figsize)
+    axSub.bar( range(len(comp_names)), [np.mean(i) for i in comp_data], 
+              yerr = [2*np.std(i)/np.sqrt(len(i)) for i in comp_data],
+              color = (0.5,0.5,0.5), error_kw={'elinewidth':8, 'ecolor':(0.7,0.7,0.7)} )
+    sb.swarmplot(x='grouping', y='pairwise_data', data=comp_df, ax=axSub, color=(0,0.5,0.5), alpha=0.3)
+    axSub.plot([axSub.get_xlim()[0],axSub.get_xlim()[1]],[0,0],linewidth=2,linestyle='--',color=(0,0,0),label='_nolegend_')
+    for i in range(len(comp_names)):
+        plt.text(i-0.2,-5,'N='+str(len(comp_data[i])))
+    # put *s for FDR-corrected significance
+    p_values = []
+    for i in range(len(comp_data)):
+        p_values.append(ttest_1samp(comp_data[i],0)[1])
+    sig_after_correction = fdrcorrection(p_values)[0]
+    for i in range(len(sig_after_correction)):
+        if sig_after_correction[i]==True:
+            plt.text(i-0.07,-4,'*',size=20)
+    print('FDR-corrected p-values for each:')
+    fdr_pvalues = fdrcorrection(p_values)[1]
+
+    # axSub.set(xticks=[],xticklabels=comp_names)
+    axSub.set_ylim(-5.5,5.5)
+    plt.xlabel(col_names[0])
+    plt.ylabel(col_names[1])
+    figSub.tight_layout()
+    
+    print(fdr_pvalues)
+    return fdr_pvalues
+
 def plotHistoBar(values,start,end,bin_size,tick_range_divisor=1,normalize=False):
     # e.g. plotHistoBar(lengths,0,0.2,0.01,tick_range=np.arange(0,0.2,0.05),normalize=True)
     # properly plot a histogram (with the values shown in the current bins!)
