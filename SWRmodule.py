@@ -811,11 +811,13 @@ def binBinaryArray(start_array,bin_size,sr_factor):
         binned_array = superVstack(binned_array,temp_row)
     return binned_array
 
-def getSubSessPredictors(sub_names,sub_sess_names,trial_nums):
+def getSubSessPredictors(sub_names,sub_sess_names,trial_nums,electrode_labels):
     # get arrays of predictors for each trial so can set up ME model
+    # 2020-08-31 get electrode labels too
     
     subject_name_array = []
     session_name_array = []
+    electrode_array = []
 
     trial_ct = 0
     for ct,subject in enumerate(sub_names):    
@@ -824,8 +826,9 @@ def getSubSessPredictors(sub_names,sub_sess_names,trial_nums):
         # update each array with subjects, sessions, and other prdictors
         subject_name_array.extend(np.tile(subject,trials_this_loop))
         session_name_array.extend(np.tile(sub_sess_names[ct],trials_this_loop))
+        electrode_array.extend(np.tile(electrode_labels[ct],trials_this_loop))
         
-    return subject_name_array,session_name_array
+    return subject_name_array,session_name_array,electrode_array
 
 def getMixedEffectCIs(binned_start_array,subject_name_array,session_name_array):
     # take a binned array of ripples and find the mixed effect confidence intervals
