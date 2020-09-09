@@ -4,8 +4,11 @@ All regions I've been able to find in PS tasks, either in the stim. electrode (s
 or in the other electrodes (see get_elec_regions). These can be found in a manner like
 the "unique electrode region labels" cell in dataQuality.ipynb
 Can import like so: >>>from brain_labels import MTL_labels, LTC_labels, PFC_labels, OTHER_labels, ALL_labels
-2020-08-17 JS updated with new labels now that I'm loading localization.json pairs in addition to usual pairs
-see SWRmodule for details on getting the region names and the order or operations for differnt atlases
+
+2020-08-17 JS updated with new labels now that I'm loading localization.json pairs in addition to usual pairs in FR1.
+see SWRgetRegionNames for details on getting the region names and the order or operations for differnt atlases
+in SWRmodule.
+2020-09-04 JS checked this for catFR too and regions are the same
 '''
 
 MTL_stein = ['left ca1','left ca2','left ca3','left dg','left sub','left prc','left ec','left phc','left mtl wm',
@@ -17,7 +20,7 @@ PFC_stein = ['left caudal middle frontal cortex','left dlpfc','left precentral g
              'right caudal middle frontal cortex','right dlpfc','right superior frontal gyrus']
 cingulate_stein = ['left acg','left mcg','left pcg','right acg','right pcg']
 parietal_stein = ['left supramarginal gyrus','right supramarginal gyrus']
-other_TL_stein = ['ba36','left fusiform gyrus wm'] # actually from Das. ba36 is part of fusiform
+other_TL_stein = ['left fusiform gyrus wm'] # actually from Das. ba36 is part of fusiform
 other_stein = ['left precentral gyrus','none','right insula','right precentral gyrus','nan','misc']
 
 # Using Desikan Neuroimage (2016), the ind localizations come from automated segmentation
