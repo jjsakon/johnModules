@@ -116,7 +116,7 @@ def findStimbp(evs_on,sub,session,tal_struct,exp):
             stim_electrode_change = 1
             stim_pair = copy(test_pair)
             print('The anode/cathode pair changed during this session!! Task: '+exp+
-                  ', '+sub+', session: '+str(session))
+                  ', '+sub+', session: '+str(session)+'; now channel: '+str(test_pair))
     chs = [list(temp) for temp in tal_struct['channel']]
     stimbp = np.nan
     for idx,ch_pair in enumerate(chs):
