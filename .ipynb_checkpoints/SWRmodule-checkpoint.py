@@ -13,8 +13,11 @@ from ptsa.data.filters import morlet
 from ptsa.data.filters import ButterworthFilter
 from general import *
 
-# all the unique sub names for FR1 task in df
-total_sub_names = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
+# all the unique sub names for FR tasks in df
+# note that for FR1 this was before localization.pairs pipeline was added
+# catFR1 this was after localizations.pairs pipeline was added
+# comes from np.unique(sub_names) after loading all HPC recall data from exp_df
+total_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
        'R1022J', 'R1027J', 'R1032D', 'R1033D', 'R1034D', 'R1035M',
        'R1044J', 'R1045E', 'R1048E', 'R1049J', 'R1052E', 'R1054J',
        'R1056M', 'R1059J', 'R1061T', 'R1063C', 'R1065J', 'R1066P',
@@ -34,6 +37,29 @@ total_sub_names = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
        'R1330D', 'R1332M', 'R1334T', 'R1336T', 'R1338T', 'R1339D',
        'R1341T', 'R1342M', 'R1346T', 'R1349T', 'R1350D', 'R1374T',
        'R1397D']
+total_sub_names_catFR1 = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R1045E',
+       'R1056M', 'R1061T', 'R1065J', 'R1066P', 'R1067P', 'R1083J',
+       'R1086M', 'R1089P', 'R1092J', 'R1094T', 'R1102P', 'R1105E',
+       'R1108J', 'R1112M', 'R1131M', 'R1138T', 'R1144E', 'R1147P',
+       'R1157C', 'R1158T', 'R1163T', 'R1167M', 'R1171M', 'R1174T',
+       'R1176M', 'R1180C', 'R1188C', 'R1190P', 'R1192C', 'R1204T',
+       'R1207J', 'R1217T', 'R1221P', 'R1226D', 'R1227T', 'R1230J',
+       'R1236J', 'R1239E', 'R1240T', 'R1243T', 'R1245E', 'R1254E',
+       'R1264P', 'R1269E', 'R1275D', 'R1278E', 'R1288P', 'R1291M',
+       'R1293P', 'R1303E', 'R1310J', 'R1313J', 'R1315T', 'R1320D',
+       'R1328E', 'R1330D', 'R1332M', 'R1334T', 'R1337E', 'R1338T',
+       'R1342M', 'R1343J', 'R1347D', 'R1348J', 'R1354E', 'R1361C',
+       'R1366J', 'R1367D', 'R1368T', 'R1372C', 'R1374T', 'R1377M',
+       'R1379E', 'R1380D', 'R1383J', 'R1385E', 'R1386T', 'R1387E',
+       'R1388T', 'R1393T', 'R1395M', 'R1396T', 'R1397D', 'R1404E',
+       'R1405E', 'R1409D', 'R1414E', 'R1415T', 'R1420T', 'R1421M',
+       'R1422T', 'R1423E', 'R1426N', 'R1427T', 'R1433E', 'R1436J',
+       'R1443D', 'R1444D', 'R1445E', 'R1447M', 'R1448T', 'R1449T',
+       'R1450D', 'R1456D', 'R1459M', 'R1461T', 'R1463E', 'R1465D',
+       'R1467M', 'R1468J', 'R1469D', 'R1472T', 'R1473J', 'R1476J',
+       'R1477J', 'R1482J', 'R1484T', 'R1486J', 'R1487T', 'R1488T',
+       'R1489E', 'R1491T', 'R1493T', 'R1496T', 'R1497T', 'R1498D',
+       'R1499T', 'R1501J', 'R1505J', 'R1515T', 'R1518T']
 
 def Log(s, logname):
     date = datetime.datetime.now().strftime('%F_%H-%M-%S')
@@ -143,8 +169,8 @@ def removeRepeatedRecalls(evs_free_recall,word_evs):
     for ln in list_nums:
         evs_idxs_for_list_recalls = np.where(evs_free_recall.list==ln)[0] # idxs in evs df so can set repeats to 0
         list_recalls = evs_free_recall[evs_free_recall.list==ln] # recalls just for this list
-        list_words = word_evs[word_evs.list==ln] # words just for this list
-        recalls_serial_pos = [int(list_words[list_words.item_name==w].serialpos) for w in list_recalls.item_name] 
+        list_words = word_evs[word_evs.list==ln] # words just for this list     
+        recalls_serial_pos = [int(list_words[list_words.item_name==w].serialpos) for w in list_recalls.item_name]
         _,repeats_to_remove = remove_recall_repeats(recalls_serial_pos) # get idxs for this list of which recalls were removed
         if len(repeats_to_remove)>0:
             evs_idxs_for_list_recalls = evs_idxs_for_list_recalls[repeats_to_remove] # grab right indxs for the whole session index
