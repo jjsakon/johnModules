@@ -213,7 +213,8 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
     from scipy.spatial.distance import euclidean
     from scipy.stats import percentileofscore
     import itertools
-    #Get temporal/semantic clustering scores. 
+    #Get temporal/semantic clustering scores given clustering values for recalls and serial positions
+    # 2020-10-04 JS updated this code to reflect pybeh's calculation of percentiles (the two test_dists lines and 'mean' over 'strict')
 
     #recall_cluster_values: array of semantic/temporal values
     #recall_serial_pos: array of indices for true recall sequence (indexing depends on when called), e.g. [1, 12, 3, 5, 9, 6]
@@ -228,21 +229,84 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
                           if (recall_serial_pos[ridx] in comb)
                          ]
         dists = []
-        for c in possible_trans: # all possible trans within list...do it this way since can avoid the true one with the except
+        for c in possible_trans: # all possible trans within list...do it this way since can avoid the used recalls with the except
             try:
                 dists.append(euclidean(recall_cluster_values[c[0]], recall_cluster_values[c[1]]))
             except:
-                #If we did this transition, then it's a NaN, so append a NaN
+                #If this word was already realled, then we hit a NaN, so append the NaN
                 dists.append(np.nan)
         dists = np.array(dists)
         dists = dists[np.isfinite(dists)]
         true_trans = euclidean(recall_cluster_values[recall_serial_pos[ridx]], recall_cluster_values[recall_serial_pos[ridx+1]])
-        pctrank = 1.-percentileofscore(dists, true_trans, kind='strict')/100. # use strict so lag of 1 yields 1.00 percentile
-        all_pcts.append(pctrank) # percentile rank within each list
+        
+        # remove the actual transition from the denominator to scale from 0 to 1 (see Manning 2011 PNAS)
+        test_dists = list(dists)
+        test_dists.remove(true_trans) # Ethan didn't do this either
 
-        recall_cluster_values[recall_serial_pos[ridx]] = np.nan # used serialpos get a NaN so won't be included in %ile
+        # can only get 1.0 or 0.0 transition if transitioning from first or last word using 'mean' but how Manning 2011 does it
+        pctrank = 1.-percentileofscore(test_dists, true_trans, kind='mean')/100. # 'mean' as in PYBEH temp_fact. Ethan used 'strict'
+
+        all_pcts.append(pctrank) # percentile rank within each list
+        recall_cluster_values[recall_serial_pos[ridx]] = np.nan # used serialpos gets a NaN so won't pass in next possible_trans
 
     return all_pcts
+
+# PYBEH implementation for temporal clustering. This code applies the df to pybeh
+def pd_temp_fact(df, skip_first_n=0):
+    
+    import pybeh
+    from pybeh.temp_fact import temp_fact
+    from pybeh.make_recalls_matrix import make_recalls_matrix
+    
+    """Expects as input a dataframe (df) for one subject"""
+    pres_itemnos, rec_itemnos, _, _ = get_itemno_matrices(df)
+    recalls = pybeh.make_recalls_matrix.make_recalls_matrix(pres_itemnos, rec_itemnos)
+
+    temp_fact = pybeh.temp_fact.temp_fact(recalls=recalls, 
+                  subjects=np.array(['a'] * recalls.shape[0]),
+                  listLength=pres_itemnos.shape[1],
+                  skip_first_n=skip_first_n)
+    return temp_fact[0]
+
+def pd_semantic_fact(df, dist_mat, skip_first_n=0):
+    # this doesn't work yet...not sure if I set up the apply with two inputs correctly
+    # in any case, the way this uses item_num doesn't make sense with my 461 (not 300) 
+    # word list used across ALL catFR1. Would have to reindex the 300 words in each pool
+    # to 461 or recalculate the word2vec for every session which is a pain
+    import pybeh
+    from pybeh.dist_fact import dist_fact
+    from pybeh.make_recalls_matrix import make_recalls_matrix
+    
+    """Expects as input a dataframe (df) for one subject"""
+    pres_itemnos, rec_itemnos, _, _ = get_itemno_matrices(df)
+#     recalls = pybeh.make_recalls_matrix.make_recalls_matrix(pres_itemnos, rec_itemnos)
+
+    temp_fact = pybeh.dist_fact.dist_fact(rec_itemnos=rec_itemnos, pres_itemnos=pres_itemnos,
+                  subjects=np.array(['a'] * rec_itemnos.shape[0]),
+                  dist_mat=dist_mat,
+                  listLength=pres_itemnos.shape[1],
+                  skip_first_n=skip_first_n)
+    return temp_fact[0]
+    
+
+def get_itemno_matrices(df, itemno_values='item_num', list_index=['subject', 'session', 'list'], pres_columns='serialpos'):
+    # used in above translator
+    """Expects as input a dataframe (df) for one subject"""
+    df.loc[:, itemno_values] = df.loc[:, itemno_values].astype(int)
+    df.loc[:, pres_columns] = df.loc[:, pres_columns].astype(int)
+    word_evs = df.query('type == "WORD"')
+    rec_evs = df.query('type == "REC_WORD"')
+    rec_evs.loc[:, 'outpos'] = rec_evs.groupby(list_index).cumcount() 
+    pres_itemnos_df = pd.pivot_table(word_evs, values=itemno_values, 
+                                 index=list_index, 
+                                 columns=pres_columns).reset_index()
+    rec_itemnos_df = pd.pivot_table(rec_evs, values=itemno_values, 
+                                 index=list_index, 
+                                 columns='outpos', fill_value=0).reset_index()
+    n_index_cols = len(list_index)
+    pres_itemnos = pres_itemnos_df.iloc[:, (n_index_cols):].values
+    rec_itemnos = rec_itemnos_df.iloc[:, (n_index_cols):].values
+    return pres_itemnos, rec_itemnos, pres_itemnos_df, rec_itemnos_df
 
 def getSecondRecalls(evs_free_recall,IRI):
     # instead of removing recalls with <IRI, get ONLY the second recalls have been been removed
@@ -531,27 +595,44 @@ def get_tal_distmat(tal_struct):
     
     return distmat  
 
-def correctEEGoffset(sub,session,exp,events):
-    # The EEG for many subjects does not align with the events since the implementation of Unity. 
-    # This is a temporary fix for the EEG alignment for these subjects before we correct the data itself
-    # for subject-by-subject details see:
+def correctEEGoffset(sub,session,exp,reader,events):
+    # The EEG for many FR subjects (FR1 and catFR1 in particular) does not align with the events since the 
+    # implementation of Unity. This is a temporary fix for the EEG alignment for these subjects before
+    # the data is corrected in Rhino. Subject-by-subject details are here:
     # https://docs.google.com/spreadsheets/d/1co5f7-dPOktGIXZJ7uptv0SwBJhf36TuhVSMFqRC0X8/edit?usp=sharing
     # JS 2020-09-22
+    # Update 2020-09-29 accounting for sampling rate and raising error if eeg events don't exist
+    
+    ## Inputs ##
+    # sub: subject name (type str)
+    # session: session number (type int)
+    # exp: experiment, typically 'FR1' or 'catFR1' (type str)
+    # reader: typical output from CMLReader function (see cmlreaders documentation)
+    # events: dataFrame from reader.load('task_events') for your events of choice
     
     import re
     
-    sub_num = [int(s) for s in re.findall(r'\d+',sub)] # extract number for sub    
+    sub_num = [int(s) for s in re.findall(r'\d+',sub)] # extract number for sub   
+    
+    temp_eeg = reader.load_eeg(events=events, rel_start=0, rel_stop=100) # just to get sampling rate
+    sr = temp_eeg.samplerate
+    sr_factor = 1000/sr
+    
+    if sum(events.eegoffset==-1)>0:
+        raise Exception('Events without EEG (those with events.eegoffset=-1) should be removed before calling correctEEGoffset')
  
     if (sub in ['R1379E','R1385E','R1387E','R1394E','R1402E']) or \
         (sub=='R1404E' and session==0 and exp=='catFR1'): 
         # first 5 true for catFR1 and FR1. R1404E only one catFR1 session has partial beep 
         # for these subs there is a partial beep and 500 ms of eeg lag (see "History of issues 2020-09-08" for examples)
-        events.eegoffset = events.eegoffset+500 # add time since the events are already ahead of the eeg
+        
+        # add time (in units of samples) since the events are already ahead of the eeg
+        events.eegoffset = events.eegoffset+int(np.round(500/sr_factor)) 
         
     # subs where unity was implemented for some sessions but not others
     elif (sub=='R1396T' and exp=='catFR1') or (sub=='R1396T' and session==1) or \
          (sub=='R1395M' and exp=='catFR1') or (sub=='R1395M' and exp=='FR1' and session>0):
-        events.eegoffset = events.eegoffset+1000
+        events.eegoffset = events.eegoffset+int(np.round(1000/sr_factor))
     
     # do nothing since these sessions were pyEPL so the offset is okay
     elif (sub=='R1406M' and session==0) or (sub=='R1415T' and session==0 and exp=='FR1') or (sub=='R1422T' and exp=='FR1'):
@@ -559,7 +640,7 @@ def correctEEGoffset(sub,session,exp,events):
     
     # remaining unity subs
     elif sub_num[0]>=1397 or sub == 'R1389J': 
-        events.eegoffset = events.eegoffset+1000
+        events.eegoffset = events.eegoffset+int(np.round(1000/sr_factor))
         
     return events
 
