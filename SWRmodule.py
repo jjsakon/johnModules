@@ -118,6 +118,15 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period):
         recall_selection_name = 'RECALLTWO'
     elif recall_type_switch == 3:
         recall_selection_name = 'SOLONOCOMPOUND'  
+    elif recall_type_switch == 4:
+        recall_selection_name = 'FIRSTRECALL'
+    elif recall_type_switch == 5:
+        recall_selection_name = 'SECONDSLESSTHANIRI'
+    elif recall_type_switch == 6:
+        recall_selection_name = 'SOLONOCOMPOUND1500'    
+    elif recall_type_switch == 7:
+        recall_selection_name = 'SOLONOCOMPOUND2500' 
+        
     if selected_period == 'surrounding_recall':
         if recall_type_switch == 0:
             subfolder = 'IRIonly' # for all recall trials as usual
@@ -160,6 +169,59 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI):
         selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
                 np.append(np.diff(evs_free_recall.mstime)>remove_recalls_with_another_recall_within,True) 
         recall_selection_name = 'SOLONOCOMPOUND'
+        
+    elif recall_type_switch == 4: 
+        # subset of recalls that come first in retrieval period
+        unique_lists = np.unique(evs_free_recall.list)
+        first_of_list_list = []
+        for list_num in unique_lists:
+            first_of_list_list.append(evs_free_recall[evs_free_recall.list==list_num][0:1].index[0]) # index of 1st
+        selected_recalls_idxs = []
+        for index_num in evs_free_recall.index: # go through each index number and see if it's one of the 1st of lists
+            if index_num in first_of_list_list:
+                selected_recalls_idxs.append(True)
+            else:
+                selected_recalls_idxs.append(False)
+        recall_selection_name = 'FIRSTRECALLS' 
+    elif recall_type_switch == 5:
+        keep_second_recalls_within = 2000
+        # take only those recalls that come second in retrieval period within 2 s of first retrieval
+        lists_with_two_recalls = []
+        unique_lists = np.unique(evs_free_recall.list)
+        for list_num in unique_lists:
+            if sum(evs_free_recall.list==list_num)>=2: # if at least 2 recalls
+                lists_with_two_recalls.append(list_num)
+        seconds_lessthan_IRI = []
+        for list_num in lists_with_two_recalls:
+            # if IRI b/w 1st and 2nd recall is < XXXX
+            temp_evs = evs_free_recall[evs_free_recall.list==list_num]
+            if np.diff(temp_evs[0:2].mstime)<=keep_second_recalls_within:
+                seconds_lessthan_IRI.append(temp_evs[1:2].index[0]) # get index of these 2nd recalls < IRI
+        selected_recalls_idxs = []
+        for index_num in evs_free_recall.index: # go through each index number and see if it's one of the 1st of lists
+            if index_num in seconds_lessthan_IRI:
+                selected_recalls_idxs.append(True)
+            else:
+                selected_recalls_idxs.append(False)
+        recall_selection_name = 'SECONDSLESSTHANIRI'    
+    elif recall_type_switch == 6:
+        # subset of recalls < IRI
+        
+        remove_recalls_with_another_recall_within = 1500
+        
+        # True at end since another recall never happens
+        selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
+                np.append(np.diff(evs_free_recall.mstime)>remove_recalls_with_another_recall_within,True) 
+        recall_selection_name = 'SOLONOCOMPOUND1500'
+    elif recall_type_switch == 7:
+        # subset of recalls < IRI
+        
+        remove_recalls_with_another_recall_within = 2500
+        
+        # True at end since another recall never happens
+        selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
+                np.append(np.diff(evs_free_recall.mstime)>remove_recalls_with_another_recall_within,True) 
+        recall_selection_name = 'SOLONOCOMPOUND2500'
     
     return recall_selection_name,selected_recalls_idxs
 
