@@ -105,7 +105,7 @@ def getMTLregions(MTL_labels):
     PHC_labels = [MTL_labels[i] for i in [7,16,20,26,31,36,41,48,55]] # all labels within parahippocampal
     return HPC_labels,ENT_labels,PHC_labels    
 
-def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period):
+def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period,recall_minimum):
     # get strings for path name for save and loading cluster data
     if remove_soz_ictal == False:
         soz_label = 'soz_in'
@@ -117,15 +117,11 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period):
     elif recall_type_switch == 2:
         recall_selection_name = 'RECALLTWO'
     elif recall_type_switch == 3:
-        recall_selection_name = 'SOLONOCOMPOUND'  
+        recall_selection_name = 'SOLONOCOMPOUND'+str(recall_minimum)
     elif recall_type_switch == 4:
         recall_selection_name = 'FIRSTRECALL'
     elif recall_type_switch == 5:
         recall_selection_name = 'SECONDSLESSTHANIRI'
-    elif recall_type_switch == 6:
-        recall_selection_name = 'SOLONOCOMPOUND1500'    
-    elif recall_type_switch == 7:
-        recall_selection_name = 'SOLONOCOMPOUND2500' 
         
     if selected_period == 'surrounding_recall':
         if recall_type_switch == 0:
@@ -139,7 +135,7 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period):
     
     return soz_label,recall_selection_name,subfolder
 
-def selectRecallType(recall_type_switch,evs_free_recall,IRI):
+def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
     # input recall type (assigned in SWRanalysis) and output the selected idxs and their associated string name
 
     if recall_type_switch == 0:
@@ -156,19 +152,19 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI):
         selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
                 np.append(np.diff(evs_free_recall.mstime)<=keep_recall_with_another_recall_within,False) 
         recall_selection_name = 'FIRSTOFCOMPOUND'
+        
     elif recall_type_switch == 2:
         # get ONLY second recalls within 2 s of the first recall (these are removed in selection_type=0)
         selected_recalls_idxs = getSecondRecalls(evs_free_recall,IRI) 
         recall_selection_name = 'RECALLTWO'
-    elif recall_type_switch == 3:
-        # subset of recalls < IRI
         
-        remove_recalls_with_another_recall_within = 2000
+    elif recall_type_switch == 3:
+        # subset of recalls with at least *recall_minimum* until next recall ("isloated" recalls)
         
         # True at end since another recall never happens
         selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
-                np.append(np.diff(evs_free_recall.mstime)>remove_recalls_with_another_recall_within,True) 
-        recall_selection_name = 'SOLONOCOMPOUND'
+                np.append(np.diff(evs_free_recall.mstime)>recall_minimum,True) 
+        recall_selection_name = 'SOLONOCOMPOUND'+str(recall_minimum)
         
     elif recall_type_switch == 4: 
         # subset of recalls that come first in retrieval period
@@ -183,6 +179,7 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI):
             else:
                 selected_recalls_idxs.append(False)
         recall_selection_name = 'FIRSTRECALLS' 
+        
     elif recall_type_switch == 5:
         keep_second_recalls_within = 2000
         # take only those recalls that come second in retrieval period within 2 s of first retrieval
@@ -203,25 +200,7 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI):
                 selected_recalls_idxs.append(True)
             else:
                 selected_recalls_idxs.append(False)
-        recall_selection_name = 'SECONDSLESSTHANIRI'    
-    elif recall_type_switch == 6:
-        # subset of recalls < IRI
-        
-        remove_recalls_with_another_recall_within = 1500
-        
-        # True at end since another recall never happens
-        selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
-                np.append(np.diff(evs_free_recall.mstime)>remove_recalls_with_another_recall_within,True) 
-        recall_selection_name = 'SOLONOCOMPOUND1500'
-    elif recall_type_switch == 7:
-        # subset of recalls < IRI
-        
-        remove_recalls_with_another_recall_within = 2500
-        
-        # True at end since another recall never happens
-        selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
-                np.append(np.diff(evs_free_recall.mstime)>remove_recalls_with_another_recall_within,True) 
-        recall_selection_name = 'SOLONOCOMPOUND2500'
+        recall_selection_name = 'SECONDSLESSTHANIRI'          
     
     return recall_selection_name,selected_recalls_idxs
 
