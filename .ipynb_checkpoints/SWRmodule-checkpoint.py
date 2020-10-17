@@ -200,7 +200,12 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
                 selected_recalls_idxs.append(True)
             else:
                 selected_recalls_idxs.append(False)
-        recall_selection_name = 'SECONDSLESSTHANIRI'          
+        recall_selection_name = 'SECONDSLESSTHANIRI'    
+        
+    elif recall_type_switch == 10:
+        # remove events with Inter-Recall Intervals too small. IRI = psth_start since that's what will show in PSTH
+        selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>0)
+        recall_selection_name = 'NOIRI'
     
     return recall_selection_name,selected_recalls_idxs
 
@@ -263,32 +268,34 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
     recall_cluster_values = copy(np.array(recall_cluster_values).astype(float))
     all_pcts = []
     all_possible_trans = list(itertools.combinations(range(len(recall_cluster_values)), 2))
-
     for ridx in np.arange(len(recall_serial_pos)-1):  #Loops through each recall event, except last one
-        possible_trans = [comb 
-                          for comb in all_possible_trans 
-                          if (recall_serial_pos[ridx] in comb)
-                         ]
-        dists = []
-        for c in possible_trans: # all possible trans within list...do it this way since can avoid the used recalls with the except
-            try:
-                dists.append(euclidean(recall_cluster_values[c[0]], recall_cluster_values[c[1]]))
-            except:
-                #If this word was already realled, then we hit a NaN, so append the NaN
-                dists.append(np.nan)
-        dists = np.array(dists)
-        dists = dists[np.isfinite(dists)]
-        true_trans = euclidean(recall_cluster_values[recall_serial_pos[ridx]], recall_cluster_values[recall_serial_pos[ridx+1]])
-        
-        # remove the actual transition from the denominator to scale from 0 to 1 (see Manning 2011 PNAS)
-        test_dists = list(dists)
-        test_dists.remove(true_trans) # Ethan didn't do this either
+        if recall_serial_pos[ridx] < 0 or recall_serial_pos[ridx+1] < 0: 
+            all_pcts.append(-999) # transition to intrusions so put dummy values
+        else:
+            possible_trans = [comb 
+                              for comb in all_possible_trans 
+                              if (recall_serial_pos[ridx] in comb)
+                             ]
+            dists = []
+            for c in possible_trans: # all possible trans within list...do it this way since can avoid the used recalls with the except
+                try:
+                    dists.append(euclidean(recall_cluster_values[c[0]], recall_cluster_values[c[1]]))
+                except:
+                    #If this word was already realled, then we hit a NaN, so append the NaN
+                    dists.append(np.nan)
+            dists = np.array(dists)
+            dists = dists[np.isfinite(dists)]
+            true_trans = euclidean(recall_cluster_values[recall_serial_pos[ridx]], recall_cluster_values[recall_serial_pos[ridx+1]])
 
-        # can only get 1.0 or 0.0 transition if transitioning from first or last word using 'mean' but how Manning 2011 does it
-        pctrank = 1.-percentileofscore(test_dists, true_trans, kind='mean')/100. # 'mean' as in PYBEH temp_fact. Ethan used 'strict'
+            # remove the actual transition from the denominator to scale from 0 to 1 (see Manning 2011 PNAS)
+            test_dists = list(dists)
+            test_dists.remove(true_trans) # Ethan didn't do this either
 
-        all_pcts.append(pctrank) # percentile rank within each list
-        recall_cluster_values[recall_serial_pos[ridx]] = np.nan # used serialpos gets a NaN so won't pass in next possible_trans
+            # can only get 1.0 or 0.0 transition if transitioning from first or last word using 'mean' but how Manning 2011 does it
+            pctrank = 1.-percentileofscore(test_dists, true_trans, kind='mean')/100. # 'mean' as in PYBEH temp_fact. Ethan used 'strict'
+
+            all_pcts.append(pctrank) # percentile rank within each list
+            recall_cluster_values[recall_serial_pos[ridx]] = np.nan # used serialpos gets a NaN so won't pass in next possible_trans
 
     return all_pcts
 
