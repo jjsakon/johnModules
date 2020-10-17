@@ -209,23 +209,45 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
     
     return recall_selection_name,selected_recalls_idxs
 
+def getSerialposOfRecalls(evs_free_recall,word_evs,ln):
+    # take dataframes of recalls and words and find serial positions of recalls for this ln (list number)
+    
+    list_recalls_df = evs_free_recall[evs_free_recall.list==ln] # recalls df just for this list
+    list_words_df = word_evs[word_evs.list==ln] # words df just for this list
+    
+    words = list(list_words_df['item_name']) 
+    if 'AXE' in words: # GoogleVec doesn't have this spelling of ax (fix for semantic clustering)
+        list_words_df = list_words_df.replace('AXE','AX')
+        list_recalls_df = list_recalls_df.replace('AXE','AX')
+
+    # don't do list comprehension since intrustions don't have serialpos so have to add -999 via if statement
+    recalls_serial_pos = []
+    for w in list_recalls_df.item_name:
+        if w in np.array(list_words_df.item_name):
+            recalls_serial_pos.append(int(list_words_df[list_words_df.item_name==w].serialpos))
+        else:
+            recalls_serial_pos.append(-999)
+    # recalls_serial_pos = [int(list_words_df[list_words_df.item_name==w].serialpos) for w in list_recalls_df.item_name] # old way
+    return recalls_serial_pos
+
 def removeRepeatedRecalls(evs_free_recall,word_evs):
     # use recall df and list word df to identify repeated recalls and remove them from recall df
     
     good_free_recalls = np.ones(len(evs_free_recall))    
-    list_nums = evs_free_recall.list.unique()    
+    list_nums = evs_free_recall.list.unique()   
     for ln in list_nums:
-        evs_idxs_for_list_recalls = np.where(evs_free_recall.list==ln)[0] # idxs in evs df so can set repeats to 0
-        list_recalls = evs_free_recall[evs_free_recall.list==ln] # recalls just for this list
-        list_words = word_evs[word_evs.list==ln] # words just for this list     
-        recalls_serial_pos = [int(list_words[list_words.item_name==w].serialpos) for w in list_recalls.item_name]
+        evs_idxs_for_list_recalls = np.where(evs_free_recall.list==ln)[0] # idxs in evs df so can set repeats to 0        
+       
+        recalls_serial_pos = getSerialposOfRecalls(evs_free_recall,word_evs,ln)
+        
         _,repeats_to_remove = remove_recall_repeats(recalls_serial_pos) # get idxs for this list of which recalls were removed
         if len(repeats_to_remove)>0:
             evs_idxs_for_list_recalls = evs_idxs_for_list_recalls[repeats_to_remove] # grab right indxs for the whole session index
             good_free_recalls[evs_idxs_for_list_recalls] = 0 # remove from session index
-    evs_free_recall = evs_free_recall[good_free_recalls==1]
+    nonrepeat_idxs = good_free_recalls==1
+    evs_free_recall = evs_free_recall[nonrepeat_idxs]
     
-    return evs_free_recall
+    return evs_free_recall,nonrepeat_idxs
 
 def remove_recall_repeats(serialpositions):
     #Takes array of numbers (serial positions) and removes any repeated ones
@@ -261,16 +283,21 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
     import itertools
     #Get temporal/semantic clustering scores given clustering values for recalls and serial positions
     # 2020-10-04 JS updated this code to reflect pybeh's calculation of percentiles (the two test_dists lines and 'mean' over 'strict')
+    # 2020-10-17 JS updated for the new way I'm treating intrusions and repeats
 
     #recall_cluster_values: array of semantic/temporal values
     #recall_serial_pos: array of indices for true recall sequence (indexing depends on when called), e.g. [1, 12, 3, 5, 9, 6]
+    
+    # I'm removing repeats after this program now, so treat them as if they are intrusions so they do not contribute to the clustering score
+    _,idx_to_remove = remove_recall_repeats(recall_serial_pos)
+    recall_serial_pos[idx_to_remove] = -999
 
     recall_cluster_values = copy(np.array(recall_cluster_values).astype(float))
     all_pcts = []
     all_possible_trans = list(itertools.combinations(range(len(recall_cluster_values)), 2))
     for ridx in np.arange(len(recall_serial_pos)-1):  #Loops through each recall event, except last one
-        if recall_serial_pos[ridx] < 0 or recall_serial_pos[ridx+1] < 0: 
-            all_pcts.append(-999) # transition to intrusions so put dummy values
+        if recall_serial_pos[ridx] < 0 or recall_serial_pos[ridx+1] < 0:
+            all_pcts.append(-999) # transition to/from intrusions/repeats so put dummy values
         else:
             possible_trans = [comb 
                               for comb in all_possible_trans 
