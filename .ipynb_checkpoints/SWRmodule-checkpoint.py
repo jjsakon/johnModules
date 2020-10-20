@@ -233,7 +233,7 @@ def getSerialposOfRecalls(evs_free_recall,word_evs,ln):
 def removeRepeatedRecalls(evs_free_recall,word_evs):
     # use recall df and list word df to identify repeated recalls and remove them from recall df
     
-    good_free_recalls = np.ones(len(evs_free_recall))    
+    nonrepeat_indicator = np.ones(len(evs_free_recall))    
     list_nums = evs_free_recall.list.unique()   
     for ln in list_nums:
         evs_idxs_for_list_recalls = np.where(evs_free_recall.list==ln)[0] # idxs in evs df so can set repeats to 0        
@@ -242,12 +242,17 @@ def removeRepeatedRecalls(evs_free_recall,word_evs):
         
         _,repeats_to_remove = remove_recall_repeats(recalls_serial_pos) # get idxs for this list of which recalls were removed
         if len(repeats_to_remove)>0:
-            evs_idxs_for_list_recalls = evs_idxs_for_list_recalls[repeats_to_remove] # grab right indxs for the whole session index
-            good_free_recalls[evs_idxs_for_list_recalls] = 0 # remove from session index
-    nonrepeat_idxs = good_free_recalls==1
-    evs_free_recall = evs_free_recall[nonrepeat_idxs]
+            temp_evs_idxs = evs_idxs_for_list_recalls[repeats_to_remove] # grab right indxs for the whole session index
+            nonrepeat_indicator[temp_evs_idxs] = 0 # so now 1 means good recall and 0 means repeated recall
+            # HOWEVER, if the repeats are consecutive, the transitions are really still valid. 
+            # e.g. if the recalls are A B B C we should NOT treat the second B as if it were an intrusion...
+            # since the transitions from A->B and B->C are still valid. So let's mark these differently in nonrepeat_idxs
+            for i in range(len(recalls_serial_pos)-1):
+                if (recalls_serial_pos[i] == recalls_serial_pos[i+1]) and (recalls_serial_pos[i]!=-999):
+                    # if repeat is consecutive mark the second as a 2 to identify later in clustering algorithm
+                    nonrepeat_indicator[evs_idxs_for_list_recalls[i+1]] = 2
     
-    return evs_free_recall,nonrepeat_idxs
+    return evs_free_recall,nonrepeat_indicator
 
 def remove_recall_repeats(serialpositions):
     #Takes array of numbers (serial positions) and removes any repeated ones
@@ -277,7 +282,7 @@ def getOutputPositions(evs,evs_free_recall):
         session_corrected_list_ops.extend(original_op_order[temp_idxs])
     return session_corrected_list_ops
 
-def get_recall_clustering(recall_cluster_values, recall_serial_pos):
+def get_recall_clustering(recall_cluster_values, recalls_serial_pos):
     from scipy.spatial.distance import euclidean
     from scipy.stats import percentileofscore
     import itertools
@@ -286,22 +291,43 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
     # 2020-10-17 JS updated for the new way I'm treating intrusions and repeats
 
     #recall_cluster_values: array of semantic/temporal values
-    #recall_serial_pos: array of indices for true recall sequence (indexing depends on when called), e.g. [1, 12, 3, 5, 9, 6]
-    
-    # I'm removing repeats after this program now, so treat them as if they are intrusions so they do not contribute to the clustering score
-    _,idx_to_remove = remove_recall_repeats(recall_serial_pos)
-    recall_serial_pos[idx_to_remove] = -999
+    #recalls_serial_pos: array of indices for true recall sequence (indexing depends on when called), e.g. [1, 12, 3, 5, 9, 6]
+
+    # I'm removing repeats *after* this program now, so treat them as if they are intrusions so they do not contribute to the clustering score
+    _,idx_to_remove = remove_recall_repeats(recalls_serial_pos)
+
+    # don't remove (duplicate value) intrusions or you could get false transitions (e.g. -999->3->-999->4 should not become 3->4) 
+    keep_intrusions = np.where(np.array(recalls_serial_pos)<=-999)[0]
+    idx_to_remove = np.setdiff1d(idx_to_remove, keep_intrusions)
+    import ipdb; ipdb.set_trace()
+    actually_remove = []
+    for i in range(len(recalls_serial_pos)):
+        if i in idx_to_remove: # check each of these repeats to see if it should be removed or treated like intrusion
+            
+            # however, if the repeats are consecutive, the transitions are actually still valid. 
+            # e.g. if the recalls are A B B C we should NOT treat the second B as if it were an intrusion...
+            # since the transitions from A->B and B->C are still valid. So let's leave one of these in as long as B hasn't been recalled earlier
+            if recalls_serial_pos[i] == recalls_serial_pos[i-1] and \
+                recalls_serial_pos[i] > -990 and \
+                (recalls_serial_pos[i] not in recalls_serial_pos[:i-1]):
+                actually_remove.append(i) # remove one of the consecutive, first-time repeats
+            else:
+                recalls_serial_pos[i] = -999 # if not consecutive, first-time repeat, can treat like an intrusion
+
+    if len(actually_remove)>0:
+        recalls_serial_pos = np.delete(recalls_serial_pos,actually_remove)
 
     recall_cluster_values = copy(np.array(recall_cluster_values).astype(float))
-    all_pcts = []
+    all_pcts = []    
     all_possible_trans = list(itertools.combinations(range(len(recall_cluster_values)), 2))
-    for ridx in np.arange(len(recall_serial_pos)-1):  #Loops through each recall event, except last one
-        if recall_serial_pos[ridx] < 0 or recall_serial_pos[ridx+1] < 0:
-            all_pcts.append(-999) # transition to/from intrusions/repeats so put dummy values
+    
+    for ridx in np.arange(len(recalls_serial_pos)-1):  #Loops through each recall event
+        if recalls_serial_pos[ridx] < 0 or recalls_serial_pos[ridx+1] < 0: 
+            all_pcts.append(-999) # transition to/from intrusions or non-consecutive repeats get dummy values
         else:
             possible_trans = [comb 
                               for comb in all_possible_trans 
-                              if (recall_serial_pos[ridx] in comb)
+                              if (recalls_serial_pos[ridx] in comb)
                              ]
             dists = []
             for c in possible_trans: # all possible trans within list...do it this way since can avoid the used recalls with the except
@@ -312,8 +338,8 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
                     dists.append(np.nan)
             dists = np.array(dists)
             dists = dists[np.isfinite(dists)]
-            true_trans = euclidean(recall_cluster_values[recall_serial_pos[ridx]], recall_cluster_values[recall_serial_pos[ridx+1]])
-
+            true_trans = euclidean(recall_cluster_values[recalls_serial_pos[ridx]], recall_cluster_values[recalls_serial_pos[ridx+1]])
+        
             # remove the actual transition from the denominator to scale from 0 to 1 (see Manning 2011 PNAS)
             test_dists = list(dists)
             test_dists.remove(true_trans) # Ethan didn't do this either
@@ -322,8 +348,8 @@ def get_recall_clustering(recall_cluster_values, recall_serial_pos):
             pctrank = 1.-percentileofscore(test_dists, true_trans, kind='mean')/100. # 'mean' as in PYBEH temp_fact. Ethan used 'strict'
 
             all_pcts.append(pctrank) # percentile rank within each list
-            recall_cluster_values[recall_serial_pos[ridx]] = np.nan # used serialpos gets a NaN so won't pass in next possible_trans
-
+            recall_cluster_values[recalls_serial_pos[ridx]] = np.nan # used serialpos gets a NaN so won't pass in next possible_trans
+    import ipdb; ipdb.set_trace()
     return all_pcts
 
 # PYBEH implementation for temporal clustering. This code applies the df to pybeh

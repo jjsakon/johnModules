@@ -1,4 +1,6 @@
 ## These are general .py programs written to be used across all programs ##
+# 2020-01-09 JS
+
 import numpy as np
 
 def nameAsString(string):
