@@ -288,31 +288,42 @@ def get_recall_clustering(recall_cluster_values, recalls_serial_pos):
     import itertools
     #Get temporal/semantic clustering scores given clustering values for recalls and serial positions
     # 2020-10-04 JS updated this code to reflect pybeh's calculation of percentiles (the two test_dists lines and 'mean' over 'strict')
-    # 2020-10-17 JS updated for the new way I'm treating intrusions and repeats
+    # 2020-10-20 JS updated for the new way I'm treating intrusions and repeats. Details in comments below but dealing with things like A B B B C A
 
     #recall_cluster_values: array of semantic/temporal values
     #recalls_serial_pos: array of indices for true recall sequence (indexing depends on when called), e.g. [1, 12, 3, 5, 9, 6]
 
     # I'm removing repeats *after* this program now, so treat them as if they are intrusions so they do not contribute to the clustering score
-    _,idx_to_remove = remove_recall_repeats(recalls_serial_pos)
+    _,idx_to_remove = remove_recall_repeats(recalls_serial_pos) 
 
-    # don't remove (duplicate value) intrusions or you could get false transitions (e.g. -999->3->-999->4 should not become 3->4) 
+    # don't remove (duplicate value) intrusions or you could get false transitions (e.g. -999->3->-999->4 should not become 3->4)         
     keep_intrusions = np.where(np.array(recalls_serial_pos)<=-999)[0]
     idx_to_remove = np.setdiff1d(idx_to_remove, keep_intrusions)
-    import ipdb; ipdb.set_trace()
+
     actually_remove = []
     for i in range(len(recalls_serial_pos)):
         if i in idx_to_remove: # check each of these repeats to see if it should be removed or treated like intrusion
-            
             # however, if the repeats are consecutive, the transitions are actually still valid. 
             # e.g. if the recalls are A B B C we should NOT treat the second B as if it were an intrusion...
             # since the transitions from A->B and B->C are still valid. So let's leave one of these in as long as B hasn't been recalled earlier
             if recalls_serial_pos[i] == recalls_serial_pos[i-1] and \
                 recalls_serial_pos[i] > -990 and \
                 (recalls_serial_pos[i] not in recalls_serial_pos[:i-1]):
-                actually_remove.append(i) # remove one of the consecutive, first-time repeats
+
+                actually_remove.append(i)
             else:
-                recalls_serial_pos[i] = -999 # if not consecutive, first-time repeat, can treat like an intrusion
+                # if a string of longer than two but haven't been used before remove all but one
+                if (recalls_serial_pos[i] == recalls_serial_pos[i-1]) and (i<len(recalls_serial_pos)-1):
+                    j = i
+                    while j < len(recalls_serial_pos):
+                        if recalls_serial_pos[j]==recalls_serial_pos[j+1]:
+                            actually_remove.append(j) # remove consecutive repeats
+                            j+=1
+                        else:
+                            actually_remove.append(j) # remove last consecutive repeat
+                            break
+                else:
+                    recalls_serial_pos[i] = -999 # if not a consecutive repeat label it like intrusion so don't create false transitions
 
     if len(actually_remove)>0:
         recalls_serial_pos = np.delete(recalls_serial_pos,actually_remove)
@@ -349,7 +360,6 @@ def get_recall_clustering(recall_cluster_values, recalls_serial_pos):
 
             all_pcts.append(pctrank) # percentile rank within each list
             recall_cluster_values[recalls_serial_pos[ridx]] = np.nan # used serialpos gets a NaN so won't pass in next possible_trans
-    import ipdb; ipdb.set_trace()
     return all_pcts
 
 # PYBEH implementation for temporal clustering. This code applies the df to pybeh
