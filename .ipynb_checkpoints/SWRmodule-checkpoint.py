@@ -232,6 +232,9 @@ def getSerialposOfRecalls(evs_free_recall,word_evs,ln):
 
 def removeRepeatedRecalls(evs_free_recall,word_evs):
     # use recall df and list word df to identify repeated recalls and remove them from recall df
+    # 2020-10-22 if the repeated recalls are consecutive though, don't remove later ones, but remove initial ones! 
+    #      e.g. if you have A B B C we want to keep only the second B since our signal looks before recalls to look for clustering,
+    #.     so in this case the place to look for clustering is before A and before the second B
     
     nonrepeat_indicator = np.ones(len(evs_free_recall))    
     list_nums = evs_free_recall.list.unique()   
@@ -240,22 +243,35 @@ def removeRepeatedRecalls(evs_free_recall,word_evs):
        
         recalls_serial_pos = getSerialposOfRecalls(evs_free_recall,word_evs,ln)
         
-        _,repeats_to_remove = remove_recall_repeats(recalls_serial_pos) # get idxs for this list of which recalls were removed
+        _,repeats_to_remove = removeRepeatsBySerialpos(recalls_serial_pos) # get idxs for this list of which recalls are repeats
+        
         if len(repeats_to_remove)>0:
             temp_evs_idxs = evs_idxs_for_list_recalls[repeats_to_remove] # grab right indxs for the whole session index
             nonrepeat_indicator[temp_evs_idxs] = 0 # so now 1 means good recall and 0 means repeated recall
+            
             # HOWEVER, if the repeats are consecutive, the transitions are really still valid. 
             # e.g. if the recalls are A B B C we should NOT treat the second B as if it were an intrusion...
             # since the transitions from A->B and B->C are still valid. So let's mark these differently in nonrepeat_idxs
             for i in range(len(recalls_serial_pos)-1):
-                if (recalls_serial_pos[i] == recalls_serial_pos[i+1]) and (recalls_serial_pos[i]!=-999):
-                    # if repeat is consecutive mark the second as a 2 to identify later in clustering algorithm
-                    nonrepeat_indicator[evs_idxs_for_list_recalls[i+1]] = 2
+                if (recalls_serial_pos[i] == recalls_serial_pos[i+1]) and \
+                    (recalls_serial_pos[i]!=-999) and \
+                    (recalls_serial_pos[i] not in recalls_serial_pos[:i]):
+                    
+                    # check to see how long consecutive repeats is for this one
+                    j = copy(i)
+                    while recalls_serial_pos[i+1]==recalls_serial_pos[j+1]:
+                        nonrepeat_indicator[evs_idxs_for_list_recalls[j]] = 0 # now mark the initials as repeats since want to keep last one
+                        j+=1
+                    # mark last repeat as a 2 so can identify later from nonrepeat_indicator (only 0s will be removed)
+                    nonrepeat_indicator[evs_idxs_for_list_recalls[j]] = 2
+
+    evs_free_recall = evs_free_recall[nonrepeat_indicator>0]
     
     return evs_free_recall,nonrepeat_indicator
 
-def remove_recall_repeats(serialpositions):
+def removeRepeatsBySerialpos(serialpositions):
     #Takes array of numbers (serial positions) and removes any repeated ones
+    # note that this considers -999s as repeats but that's fine since removed anyway as intrusions
     items_to_keep = np.ones(len(serialpositions)).astype(bool)
     items_seen = []
     idx_removed = []
@@ -294,7 +310,7 @@ def get_recall_clustering(recall_cluster_values, recalls_serial_pos):
     #recalls_serial_pos: array of indices for true recall sequence (indexing depends on when called), e.g. [1, 12, 3, 5, 9, 6]
 
     # I'm removing repeats *after* this program now, so treat them as if they are intrusions so they do not contribute to the clustering score
-    _,idx_to_remove = remove_recall_repeats(recalls_serial_pos) 
+    _,idx_to_remove = removeRepeatsBySerialpos(recalls_serial_pos) 
 
     # don't remove (duplicate value) intrusions or you could get false transitions (e.g. -999->3->-999->4 should not become 3->4)         
     keep_intrusions = np.where(np.array(recalls_serial_pos)<=-999)[0]
