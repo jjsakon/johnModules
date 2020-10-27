@@ -262,6 +262,8 @@ def removeRepeatedRecalls(evs_free_recall,word_evs):
                     while recalls_serial_pos[i+1]==recalls_serial_pos[j+1]:
                         nonrepeat_indicator[evs_idxs_for_list_recalls[j]] = 0 # now mark the initials as repeats since want to keep last one
                         j+=1
+                        if j+1 == len(recalls_serial_pos): # end of list...happens when have recalls_serial_pos like [10 10]
+                            break
                     # mark last repeat as a 2 so can identify later from nonrepeat_indicator (only 0s will be removed)
                     nonrepeat_indicator[evs_idxs_for_list_recalls[j]] = 2
 
