@@ -722,7 +722,50 @@ def get_tal_distmat(tal_struct):
                 dist_mat[j,i] = np.linalg.norm(e1 - e2, axis=0)    
     distmat = 1./np.exp(dist_mat/120.)
     
-    return distmat  
+    return distmat
+
+def getBeepEnd(sub,session,exp): # in ms
+            
+    import pickle
+    # due to variable times of beep in different generations of FR1/catFR1 also need to correct REC_START time
+    fn = '/home1/john/SWR/figures/beep_RT_determination/beep_times_update2.pkl' # beep times for each session
+    
+    beep_end = 'nan'
+    
+    with open(fn,'rb') as f:
+        dat = pickle.load(f)
+    if sub in dat:
+        if exp in dat[sub]:
+            if session in dat[sub][exp]:
+                beep_end = 1000*np.median(np.fromiter(dat[sub][exp][session].values(), dtype=float))
+                
+    if beep_end == 'nan': # if there is no time from beep detection program, estimate from session 
+        # see https://docs.google.com/spreadsheets/d/1co5f7-dPOktGIXZJ7uptv0SwBJhf36TuhVSMFqRC0X8/edit?usp=sharing for details
+        import re
+        sub_num = [int(s) for s in re.findall(r'\d+',sub)] # extract number for sub
+        
+        if (sub in ['R1379E','R1385E','R1387E','R1394E','R1402E']) or \
+            (sub=='R1404E' and session==0 and exp=='catFR1'): # partial beep subs
+            beep_end = 200
+
+        # subs where unity was implemented for some sessions but not others
+        elif (sub=='R1396T' and exp=='catFR1') or (sub=='R1396T' and session==1) or \
+             (sub=='R1395M' and exp=='catFR1') or (sub=='R1395M' and exp=='FR1' and session>0):
+            beep_end = 0
+
+        # these sessions were pyEPL so beep is typically ~30 ms
+        elif (sub=='R1406M' and session==0) or (sub=='R1415T' and session==0 and exp=='FR1') or (sub=='R1422T' and exp=='FR1'):
+            beep_end = 30
+
+        # remaining unity subs
+        elif sub_num[0]>=1397 or sub == 'R1389J': 
+            beep_end = 0
+                
+    if beep_end < 10: # if less than 10 ms then there really was no beep, and with the Unity
+        # subjects many words start RIGHT at the start, so beep must have ended ~300 ms earlier
+        beep_end = -300
+                
+    return beep_end
 
 def correctEEGoffset(sub,session,exp,reader,events):
     # The EEG for many FR subjects (FR1 and catFR1 in particular) does not align with the events since the 
