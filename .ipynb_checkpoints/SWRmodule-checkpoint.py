@@ -1315,7 +1315,7 @@ def ClusterRun(function, parameter_list, max_cores=100):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=num_cores, cores_per_job=1, \
+        num_jobs=100, cores_per_job=2, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
