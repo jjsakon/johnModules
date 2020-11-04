@@ -3,6 +3,12 @@
 
 import numpy as np
 
+def isNaN(num):
+    # handles strings, float8, and float64 unlike np.isnan
+    initial_test = num != num
+    second_test = num == 'nan' # some string types don't work with above line
+    return initial_test | second_test
+
 def nameAsString(string):
     for k, v in list(locals().iteritems()):
          if v is string:
