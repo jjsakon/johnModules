@@ -236,6 +236,8 @@ def removeRepeatedRecalls(evs_free_recall,word_evs):
     #      e.g. if you have A B B C we want to keep only the second B since our signal looks before recalls to look for clustering,
     #.     so in this case the place to look for clustering is before A and before the second B
     
+    # output for indicator: 0 means repeat, 1 means good recall, 2 means second of 2 which is ok to use too
+    
     nonrepeat_indicator = np.ones(len(evs_free_recall))    
     list_nums = evs_free_recall.list.unique()   
     for ln in list_nums:
@@ -724,55 +726,12 @@ def get_tal_distmat(tal_struct):
     
     return distmat
 
-def getBeepEnd(sub,session,exp): # in ms
-            
-    import pickle
-    # due to variable times of beep in different generations of FR1/catFR1 also need to correct REC_START time
-    fn = '/home1/john/SWR/figures/beep_RT_determination/beep_times_update2.pkl' # beep times for each session
-    
-    beep_end = 'nan'
-    
-    with open(fn,'rb') as f:
-        dat = pickle.load(f)
-    if sub in dat:
-        if exp in dat[sub]:
-            if session in dat[sub][exp]:
-                beep_end = 1000*np.median(np.fromiter(dat[sub][exp][session].values(), dtype=float))
-                
-    if beep_end == 'nan': # if there is no time from beep detection program, estimate from session 
-        # see https://docs.google.com/spreadsheets/d/1co5f7-dPOktGIXZJ7uptv0SwBJhf36TuhVSMFqRC0X8/edit?usp=sharing for details
-        import re
-        sub_num = [int(s) for s in re.findall(r'\d+',sub)] # extract number for sub
-        
-        if (sub in ['R1379E','R1385E','R1387E','R1394E','R1402E']) or \
-            (sub=='R1404E' and session==0 and exp=='catFR1'): # partial beep subs
-            beep_end = 200
-
-        # subs where unity was implemented for some sessions but not others
-        elif (sub=='R1396T' and exp=='catFR1') or (sub=='R1396T' and session==1) or \
-             (sub=='R1395M' and exp=='catFR1') or (sub=='R1395M' and exp=='FR1' and session>0):
-            beep_end = 0
-
-        # these sessions were pyEPL so beep is typically ~30 ms
-        elif (sub=='R1406M' and session==0) or (sub=='R1415T' and session==0 and exp=='FR1') or (sub=='R1422T' and exp=='FR1'):
-            beep_end = 30
-
-        # remaining unity subs
-        elif sub_num[0]>=1397 or sub == 'R1389J': 
-            beep_end = 0
-                
-    if beep_end < 10: # if less than 10 ms then there really was no beep, and with the Unity
-        # subjects many words start RIGHT at the start, so beep must have ended ~300 ms earlier
-        beep_end = -300
-                
-    return beep_end
-
 def correctEEGoffset(sub,session,exp,reader,events):
     # The EEG for many FR subjects (FR1 and catFR1 in particular) does not align with the events since the 
     # implementation of Unity. This is a temporary fix for the EEG alignment for these subjects before
     # the data is corrected in Rhino. Subject-by-subject details are here:
     # https://docs.google.com/spreadsheets/d/1co5f7-dPOktGIXZJ7uptv0SwBJhf36TuhVSMFqRC0X8/edit?usp=sharing
-    # JS 2020-09-22
+    # jjsakon 2020-09-22
     # Update 2020-09-29 accounting for sampling rate and raising error if eeg events don't exist
     
     ## Inputs ##
@@ -780,7 +739,11 @@ def correctEEGoffset(sub,session,exp,reader,events):
     # session: session number (type int)
     # exp: experiment, typically 'FR1' or 'catFR1' (type str)
     # reader: typical output from CMLReader function (see cmlreaders documentation)
-    # events: dataFrame from reader.load('task_events') for your events of choice
+    # events: dataFrame from reader.load('task_events') for your *RETRIEVAL* events of choice; therefore
+    #         aligning eeg to recalls or retrieval_start. Correction is *NOT* needed for encoding alignment
+    
+    ## Output ## 
+    # events: events with eegoffset correctly aligned to the events
     
     import re
     
@@ -807,14 +770,96 @@ def correctEEGoffset(sub,session,exp,reader,events):
         events.eegoffset = events.eegoffset+int(np.round(1000/sr_factor))
     
     # do nothing since these sessions were pyEPL so the offset is okay
-    elif (sub=='R1406M' and session==0) or (sub=='R1415T' and session==0 and exp=='FR1') or (sub=='R1422T' and exp=='FR1'):
-        pass 
-    
+    elif (sub=='R1406M' and session==0) or (sub=='R1415T' and session==0 and exp=='FR1') or (sub=='R1422T' and exp=='FR1') or \
+         sub_num[0]>=1525: # and any sub after R1525J is when we caught he mistake and realigned asterisks_off/beep_off/RET_START
+        pass
+ 
     # remaining unity subs
     elif sub_num[0]>=1397 or sub == 'R1389J': 
         events.eegoffset = events.eegoffset+int(np.round(1000/sr_factor))
         
     return events
+
+def getRetrievalStartAlignmentCorrection(sub,session,exp):
+        ## Fix EEG alignment when using REC_START (start of retreival) for alignment ##
+    # Similar idea as with fixing the EEG alignment issues, except this time various versions of FR1 and
+    # catFR1 after implementation of Unity had different beep and star lengths than with pyEPL. The cases are 
+    # each explained below, but the general idea is to align the start of retrieval with the end of the beep, 
+    # since this is the best cue we have for the beginning of recall. Notably, the asterisks in Unity tend to go
+    # past the beep (this shouldn't have happened!), so actual recall times might come much later, but there's
+    # evidence from SWRs as a biomarker of recall that many subjects were recollecting during the beep and then
+    # likely holding the retrieved memory until the asterisks disappeared
+    # jjsakon 2020-11-10
+    
+    ## Inputs ##
+    # same as program above #
+    
+    ## Outputs ##
+    # align_adjust: factor to add to rel_start and rel_end in your reader.load_eeg call to grab the right EEG chunk
+
+    import pickle        
+    import re
+    
+    # first see if we were able to detect a beep time in the audio file
+    
+    fn = '/home1/john/SWR/figures/beep_RT_determination/beep_times_update2.pkl' # beep times for each session
+    
+    beep_time = 'nan'
+    
+    with open(fn,'rb') as f:
+        dat = pickle.load(f)
+    if sub in dat:
+        if exp in dat[sub]:
+            if session in dat[sub][exp]:
+                beep_time = 1000*np.median(np.fromiter(dat[sub][exp][session].values(), dtype=float))
+                
+    # if there is no time from beep detection program, I estimate from session per: 
+    # https://docs.google.com/spreadsheets/d/1co5f7-dPOktGIXZJ7uptv0SwBJhf36TuhVSMFqRC0X8/edit?usp=sharing
+
+    sub_num = [int(s) for s in re.findall(r'\d+',sub)] # extract number for sub
+
+    if (sub in ['R1379E','R1385E','R1387E','R1394E','R1402E']) or \
+        (sub=='R1404E' and session==0 and exp=='catFR1'): 
+        # first 5 true for catFR1 and FR1. R1404E only one catFR1 session has partial beep 
+        # for these subs there is a partial beep ~250 ms long after audio starts so adjust time to beep_end
+        # (in other words grab EEG shifted 250 ms later)
+        align_adjust = 250 # beep_time # could use actual beep_time here, but my guess is Connor's program is conservative
+        # and the program was theoretically consistently off the same amount
+
+    # subs where unity was implemented for some sessions but not others
+    elif (sub=='R1396T' and exp=='catFR1') or (sub=='R1396T' and session==1) or \
+         (sub=='R1395M' and exp=='catFR1') or (sub=='R1395M' and exp=='FR1' and session>0):
+        # subjects with 0 s reaction times where audio likely started at end of asterisks ~500 ms after beep_end
+        align_adjust = -500
+
+    # do nothing since these sessions were pyEPL so the offset is okay
+    # *OR* sub is after R1525J when we caught the mistake and realigned asterisks_off/beep_off/RET_START with each other
+    elif (sub=='R1406M' and session==0) or (sub=='R1415T' and session==0 and exp=='FR1') or (sub=='R1422T' and exp=='FR1') \
+            or sub_num[0]>=1525:
+        if beep_time == 'nan':
+            align_adjust = 0
+        else:
+            align_adjust = beep_time 
+
+    # remaining unity subs
+    elif sub_num[0]>=1397 or sub == 'R1389J': 
+        # subjects with 0 s reaction times where audio likely started at end of asterisks ~500 ms after beep_end
+        align_adjust = -500
+        
+    elif beep_time > 600:
+        # a number of weird unity subs have this. As above with ~250 ms subs, grab EEG later shifted by beep amount
+        # again see google doc for more details
+        align_adjust = 650 # beep_time # could use actual beep_time here, but my guess is Connor's program is conservative
+        # and the program was theoretically consistently off the same amount
+
+    # the remainder should be pyEPL subjects, most of which have very short beeps. Can use those to be anal retentive
+    else:
+        if beep_time == 'nan':
+            align_adjust = 0
+        else:
+            align_adjust = beep_time   
+
+    return np.round(align_adjust)
 
 def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
     # get the bad channels and soz/ictal/lesion channels from electrode_categories.txt files
