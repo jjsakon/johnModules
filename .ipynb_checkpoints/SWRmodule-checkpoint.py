@@ -202,6 +202,25 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
                 selected_recalls_idxs.append(False)
         recall_selection_name = 'SECONDSLESSTHANIRI'    
         
+    elif recall_type_switch == 6:
+        # subset of recalls that DON'T come first in retrieval period
+        unique_lists = np.unique(evs_free_recall.list)
+        first_of_list_list = []
+        for list_num in unique_lists:
+            if sum(evs_free_recall.list==list_num)>1:
+                first_of_list_list.extend(evs_free_recall[evs_free_recall.list==list_num].index[1:]) # index of NOT 1st
+        selected_recalls_idxs = []
+        for index_num in evs_free_recall.index: # go through each index number and see if it's one of the 1st of lists
+            if index_num in first_of_list_list:
+                selected_recalls_idxs.append(True)
+            else:
+                selected_recalls_idxs.append(False)
+                
+        good_IRIs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) # but still has to pass <IRI check        
+        selected_recalls_idxs = selected_recalls_idxs & good_IRIs # combine them
+                
+        recall_selection_name = 'NOTFIRSTRECALLS'         
+        
     elif recall_type_switch == 10:
         # remove events with Inter-Recall Intervals too small. IRI = psth_start since that's what will show in PSTH
         selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>0)
@@ -673,7 +692,7 @@ def get_elec_regions(localizations,pairs):
                     regs.append(test_region.lower())
                     atlas_type.append('ind')
                     # [tal_struct[i].atlases.ind.region for i in range(len(tal_struct))] # if you want to see ind atlases for comparison to above
-                    # have to run this first though to work in ipdb: globals().update(locals())                  
+                    # have to run this first though to work in pdb dubugger: globals().update(locals())                  
                     continue
                 else:
                     regs.append('No atlas')
