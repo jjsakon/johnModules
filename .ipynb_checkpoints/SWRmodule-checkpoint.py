@@ -122,6 +122,12 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period,recall_mi
         recall_selection_name = 'FIRSTRECALL'
     elif recall_type_switch == 5:
         recall_selection_name = 'SECONDSLESSTHANIRI'
+    elif recall_type_switch == 6:
+        recall_selection_name = 'NOTFIRSTRECALLS'
+    elif recall_type_switch == 7:
+        recall_selection_name = 'NOTFIRSTANDSOLO'
+    elif recall_type_switch == 10:
+        recall_selection_name = 'NOIRI'
         
     if selected_period == 'surrounding_recall':
         if recall_type_switch == 0:
@@ -150,7 +156,7 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
         
         # False at end since another recall never happens
         selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
-                np.append(np.diff(evs_free_recall.mstime)<=keep_recall_with_another_recall_within,False) 
+                                np.append(np.diff(evs_free_recall.mstime)<=keep_recall_with_another_recall_within,False) 
         recall_selection_name = 'FIRSTOFCOMPOUND'
         
     elif recall_type_switch == 2:
@@ -163,7 +169,7 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
         
         # True at end since another recall never happens
         selected_recalls_idxs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
-                np.append(np.diff(evs_free_recall.mstime)>recall_minimum,True) 
+                                np.append(np.diff(evs_free_recall.mstime)>recall_minimum,True) 
         recall_selection_name = 'SOLONOCOMPOUND'+str(recall_minimum)
         
     elif recall_type_switch == 4: 
@@ -219,7 +225,29 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
         good_IRIs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) # but still has to pass <IRI check        
         selected_recalls_idxs = selected_recalls_idxs & good_IRIs # combine them
                 
-        recall_selection_name = 'NOTFIRSTRECALLS'         
+        recall_selection_name = 'NOTFIRSTRECALLS'   
+        
+    elif recall_type_switch == 7:
+        # subset of recalls that DON'T come first in retrieval period
+        unique_lists = np.unique(evs_free_recall.list)
+        first_of_list_list = []
+        for list_num in unique_lists:
+            if sum(evs_free_recall.list==list_num)>1:
+                first_of_list_list.extend(evs_free_recall[evs_free_recall.list==list_num].index[1:]) # index of NOT 1st
+        selected_recalls_idxs = []
+        for index_num in evs_free_recall.index: # go through each index number and see if it's one of the 1st of lists
+            if index_num in first_of_list_list:
+                selected_recalls_idxs.append(True)
+            else:
+                selected_recalls_idxs.append(False)
+        
+        # has to pass <IRI check AND isolated recalls check
+        good_IRIs = np.append(True,np.diff(evs_free_recall.mstime)>IRI) & \
+                    np.append(np.diff(evs_free_recall.mstime)>recall_minimum,True)  
+      
+        selected_recalls_idxs = selected_recalls_idxs & good_IRIs # combine them
+                
+        recall_selection_name = 'NOTFIRSTANDSOLO'   
         
     elif recall_type_switch == 10:
         # remove events with Inter-Recall Intervals too small. IRI = psth_start since that's what will show in PSTH
@@ -493,58 +521,6 @@ def get_bp_tal_struct(sub, montage, localization):
     bipolar_pairs = tal_reader.get_bipolar_pairs()
     
     return tal_struct, bipolar_pairs, monopolar_channels
-
-# def get_elec_regions(tal_struct): # old version from Ethan
-    
-#     regs = []    
-#     atlas_type = []
-#     for num,e in enumerate(tal_struct['atlases']):
-#         try:
-#             if 'stein' in e.dtype.names:
-#                 if (e['stein']['region'] is not None) and (len(e['stein']['region'])>1) and \
-#                    (e['stein']['region'] not in 'None') and (e['stein']['region'] not in 'nan'):
-#                     regs.append(e['stein']['region'].lower())
-#                     atlas_type.append('stein')
-#                     continue
-#                 else:
-#                     pass
-#             if 'das' in e.dtype.names:
-#                 if (e['das']['region'] is not None) and (len(e['das']['region'])>1) and \
-#                    (e['das']['region'] not in 'None') and (e['das']['region'] not in 'nan'):
-#                     regs.append(e['das']['region'].lower())
-#                     atlas_type.append('das')
-#                     continue
-#                 else:
-#                     pass
-#             if 'wb' in e.dtype.names:
-#                 if (e['wb']['region'] is not None) and (len(e['wb']['region'])>1):
-#                     regs.append(e['wb']['region'].lower())
-#                     atlas_type.append('wb')
-#                     continue
-#                 else:
-#                     pass
-#             if 'dk' in e.dtype.names:
-#                 if (e['dk']['region'] is not None) and (len(e['dk']['region'])>1):
-#                     regs.append(e['dk']['region'].lower())
-#                     atlas_type.append('dk')
-#                     continue
-#                 else:
-#                     pass 
-#             if 'ind' in e.dtype.names:
-#                 if (e['ind']['region'] is not None) and (len(e['ind']['region'])>1) and \
-#                    (e['ind']['region'] not in 'None') and (e['ind']['region'] not in 'nan'):
-#                     regs.append(e['ind']['region'].lower())
-#                     atlas_type.append('ind')
-#                     continue
-#                 else:
-#                     pass               
-#             else:                
-#                 regs.append('')
-#                 atlas_type.append('No atlas')
-#         except AttributeError:
-#             regs.append('')
-            
-#     return np.array(regs),np.array(atlas_type)
 
 def Loc2PairsTranslation(pairs,localizations):
     # localizations is all the possible contacts and bipolar pairs locations
