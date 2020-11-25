@@ -256,6 +256,25 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
     
     return recall_selection_name,selected_recalls_idxs
 
+def getRecallsBeforeIntrusions(evs,evs_free_recall):
+    # get mask of recalls that lead to intrusions in frame of evs_free_recall
+    
+    temp_free_recall = evs[(evs.type=='REC_WORD')] # all recalls including intrusions
+    intrusion_idxs = np.where(temp_free_recall.intrusion.values!=0)[0]
+    intrusion_idxs = intrusion_idxs[intrusion_idxs>0]
+    pre_intrusion_recall_idxs = []
+    for intrusion_idx in intrusion_idxs:
+        if temp_free_recall.iloc[intrusion_idx].list == temp_free_recall.iloc[intrusion_idx-1].list:
+            pre_intrusion_recall_idxs.append(temp_free_recall.iloc[intrusion_idx-1].name)
+    pre_intrusion_recall_idxs # indices of recalls before intrusions that can be grabbed in frame of new evs_free_recall
+
+    pre_instrusion_recalls = np.zeros(len(evs_free_recall))
+    for recall in range(len(evs_free_recall)):
+        if evs_free_recall.iloc[recall].name in pre_intrusion_recall_idxs:
+            pre_instrusion_recalls[recall] = True
+    
+    return pre_instrusion_recalls
+
 def getSerialposFromDataframes(list_words_df,list_recalls_df):
     # get serialpos from recalls since for FR1 not provided in recalls df
     
