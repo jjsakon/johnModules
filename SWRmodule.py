@@ -256,6 +256,19 @@ def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
     
     return recall_selection_name,selected_recalls_idxs
 
+def getSerialposFromDataframes(list_words_df,list_recalls_df):
+    # get serialpos from recalls since for FR1 not provided in recalls df
+    
+    # don't do list comprehension since intrustions don't have serialpos so have to add -999 via if statement
+    recalls_serial_pos = []
+    for w in list_recalls_df.item_name:
+        if w in np.array(list_words_df.item_name):
+            recalls_serial_pos.append(int(list_words_df[list_words_df.item_name==w].serialpos))
+        else:
+            recalls_serial_pos.append(-999)
+    # recalls_serial_pos = [int(list_words_df[list_words_df.item_name==w].serialpos) for w in list_recalls_df.item_name] # old way
+    return recalls_serial_pos
+
 def getSerialposOfRecalls(evs_free_recall,word_evs,ln):
     # take dataframes of recalls and words and find serial positions of recalls for this ln (list number)
     
@@ -267,14 +280,8 @@ def getSerialposOfRecalls(evs_free_recall,word_evs,ln):
         list_words_df = list_words_df.replace('AXE','AX')
         list_recalls_df = list_recalls_df.replace('AXE','AX')
 
-    # don't do list comprehension since intrustions don't have serialpos so have to add -999 via if statement
-    recalls_serial_pos = []
-    for w in list_recalls_df.item_name:
-        if w in np.array(list_words_df.item_name):
-            recalls_serial_pos.append(int(list_words_df[list_words_df.item_name==w].serialpos))
-        else:
-            recalls_serial_pos.append(-999)
-    # recalls_serial_pos = [int(list_words_df[list_words_df.item_name==w].serialpos) for w in list_recalls_df.item_name] # old way
+    recalls_serial_pos = getSerialposFromDataframes(list_words_df,list_recalls_df)
+    
     return recalls_serial_pos
 
 def removeRepeatedRecalls(evs_free_recall,word_evs):
