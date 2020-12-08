@@ -1102,7 +1102,7 @@ def downsampleBinary(array,factor):
 def ptsa_to_mne(eegs,time_length): # in ms
     # convert ptsa to mne    
     import mne
-    
+
     sr = int(np.round(eegs.samplerate)) #get samplerate...round 1st since get like 499.7 sometimes  
     eegs = eegs[:, :, :].transpose('event', 'channel', 'time') # make sure right order of names
     
@@ -1353,7 +1353,7 @@ def GetElectrodes(sub,start,stop):
 def MakeLocationFilter(scheme, location):
     return [location in s for s in [s if s else '' for s in scheme.iloc()[:]['ind.region']]]
 
-def getElectrodeRanges(elec_regions,exp,session,mont):
+def getElectrodeRanges(elec_regions,exp,sub,session,mont):
     # remove bad range of electrodes (high noise) that I found by manually looking through data (raster in particular)
     # note that each of these subs/sessions should be documented in a pairs of ppts in the FR1/catFR1 cleaning folders on box
     electrode_search_range = range(len(elec_regions))

@@ -328,13 +328,14 @@ def get_tal_distmat(tal_struct):
     
     return distmat  
     
-def ptsa_to_mne(eegs,time_range): # convert ptsa to mne    
+def ptsa_to_mne(eegs,time_length): # in ms
+    # convert ptsa to mne    
     import mne
     
-    sr = int(eegs.samplerate) #get samplerate    
+    sr = int(np.round(eegs.samplerate)) #get samplerate...round 1st since get like 499.7 sometimes  
     eegs = eegs[:, :, :].transpose('event', 'channel', 'time') # make sure right order of names
     
-    time = [x/1000 for x in time_range] # convert to s for MNE
+    time = [x/1000 for x in time_length] # convert to s for MNE
     clips = np.array(eegs[:, :, int(sr*time[0]):int(sr*time[1])])
 
     mne_evs = np.empty([clips.shape[0], 3]).astype(int)
@@ -343,10 +344,10 @@ def ptsa_to_mne(eegs,time_range): # convert ptsa to mne
     mne_evs[:, 2] = list(np.zeros(clips.shape[0]))
     event_id = dict(resting=0)
     tmin=0.0
-    info = mne.create_info([str(i) for i in range(eegs.shape[1])], sr, ch_types='eeg')  
+    info = mne.create_info([str(i) for i in range(eegs.shape[1])], sr, ch_types='eeg',verbose=False)  
     
-    arr = mne.EpochsArray(np.array(clips), info, mne_evs, tmin, event_id)
-    return arr
+    arr = mne.EpochsArray(np.array(clips), info, mne_evs, tmin, event_id, verbose=False)
+    return arr # returns trials X electrodes X freqs
     
 def get_multitaper_power(eegs, time, freqs):
     # note: must be in ptsa format!!
