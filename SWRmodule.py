@@ -62,6 +62,7 @@ total_sub_names_catFR1 = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R10
        'R1477J', 'R1482J', 'R1484T', 'R1486J', 'R1487T', 'R1488T',
        'R1489E', 'R1491T', 'R1493T', 'R1496T', 'R1497T', 'R1498D',
        'R1499T', 'R1501J', 'R1505J', 'R1515T', 'R1518T']
+# unique site codes: C, D, E, J, M, N, P, T
 
 def Log(s, logname):
     date = datetime.datetime.now().strftime('%F_%H-%M-%S')
@@ -140,6 +141,29 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period,recall_mi
         subfolder = 'ENCODING' 
     
     return soz_label,recall_selection_name,subfolder
+
+def getSecondRecalls(evs_free_recall,IRI):
+    # instead of removing recalls with <IRI, get ONLY the second recalls that have been been removed
+    # note that all recalls within IRI of the second recalls are then remove to make it "only"
+    mstime_diffs = np.diff(evs_free_recall.mstime)
+    second_recalls = np.append(False,mstime_diffs<=IRI) # first one can never be second recall so add a False
+    mstime_diffs = np.append(0,mstime_diffs) # add a first trial just to make this align with diffs
+    adjusted_second_recalls = copy(second_recalls)
+
+    i=-1
+    while i < len(second_recalls)-1:
+        i+=1
+        second_recall = second_recalls[i]
+        if second_recall == True and i < (len(second_recalls)-1): # -1 since adding 1 below
+            # now that have a second recall, make sure ones after it aren't within 2000 ms of it
+            last_time_diff = 0
+            while (last_time_diff+mstime_diffs[i+1])<=IRI:
+                adjusted_second_recalls[i+1] = False
+                last_time_diff = last_time_diff + mstime_diffs[i+1]
+                i+=1
+                if i >= (len(second_recalls)-1): # same idea as above. already checked last row so -1!
+                    break                
+    return adjusted_second_recalls
 
 def selectRecallType(recall_type_switch,evs_free_recall,IRI,recall_minimum):
     # input recall type (assigned in SWRanalysis) and output the selected idxs and their associated string name
@@ -352,7 +376,8 @@ def removeRepeatsBySerialpos(serialpositions):
     items_to_keep = np.ones(len(serialpositions)).astype(bool)
     items_seen = []
     idx_removed = []
-    for idx in range(len(serialpositions)):
+    for idx in range(len
+                     (serialpositions)):
         if serialpositions[idx] in items_seen:
             items_to_keep[idx] = False
             idx_removed.append(idx)
@@ -511,29 +536,6 @@ def get_itemno_matrices(df, itemno_values='item_num', list_index=['subject', 'se
     pres_itemnos = pres_itemnos_df.iloc[:, (n_index_cols):].values
     rec_itemnos = rec_itemnos_df.iloc[:, (n_index_cols):].values
     return pres_itemnos, rec_itemnos, pres_itemnos_df, rec_itemnos_df
-
-def getSecondRecalls(evs_free_recall,IRI):
-    # instead of removing recalls with <IRI, get ONLY the second recalls have been been removed
-    # note that all recalls within IRI of the second recalls are then remove to make it "only"
-    mstime_diffs = np.diff(evs_free_recall.mstime)
-    second_recalls = np.append(False,mstime_diffs<=IRI) # first one can never be second recall so add a False
-    mstime_diffs = np.append(0,mstime_diffs) # add a first trial just to make this align with diffs
-    adjusted_second_recalls = copy(second_recalls)
-
-    i=-1
-    while i < len(second_recalls)-1:
-        i+=1
-        second_recall = second_recalls[i]
-        if second_recall == True and i < (len(second_recalls)-1): # -1 since adding 1 below
-            # now that have a second recall, make sure ones after it aren't within 2000 ms of it
-            last_time_diff = 0
-            while (last_time_diff+mstime_diffs[i+1])<=IRI:
-                adjusted_second_recalls[i+1] = False
-                last_time_diff = last_time_diff + mstime_diffs[i+1]
-                i+=1
-                if i >= (len(second_recalls)-1): # same idea as above. already checked last row so -1!
-                    break                
-    return adjusted_second_recalls
     
 def get_bp_tal_struct(sub, montage, localization):
     
@@ -1350,6 +1352,65 @@ def GetElectrodes(sub,start,stop):
 
 def MakeLocationFilter(scheme, location):
     return [location in s for s in [s if s else '' for s in scheme.iloc()[:]['ind.region']]]
+
+def getElectrodeRanges(elec_regions,exp,session,mont):
+    # remove bad range of electrodes (high noise) that I found by manually looking through data (raster in particular)
+    # note that each of these subs/sessions should be documented in a pairs of ppts in the FR1/catFR1 cleaning folders on box
+    electrode_search_range = range(len(elec_regions))
+    if exp == 'FR1':
+        if sub == 'R1120E':
+            electrode_search_range = range(30) # HPC elecs after 25:26 have lots of artifacts that get picked up as SWRs. See subject figure PPT
+        elif sub == 'R1349T': # channels 90 and below have tons of artifcats. After that looks okay though
+            electrode_search_range = range(91,len(elec_regions))
+        elif sub == 'R1397D': # for these two sessions two pairs of the electrodes have lots of correlated noise. Remove them
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 60]
+            electrode_search_range.remove(110)
+        elif sub == 'R1332M' and session == 1:
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 48] # some real weird bands in these couple sessions
+            electrode_search_range.remove(49)
+        elif sub == 'R1299T':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 34] # see PPT. These two pairs shared an electrode and had tons of correlated artifacts
+            electrode_search_range.remove(43) 
+    # note that I'm okay with overlap in say entorhinal also removing hippocampal channels. So don't specify region in these
+    # just assume that the overlap exists in all cases
+    elif exp == 'catFR1':
+        if sub == 'R1269E':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 11] # 10, 11, 54, 55 all look identical in HPC raster so remove latter 3
+            electrode_search_range.remove(54) # (see SWR catFR1 problem sessions ppt for details)
+            electrode_search_range.remove(55)
+        elif sub == 'R1328E':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 38] # overlapping signal with ch 37
+        elif sub == 'R1367D':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 71] # overlapping signals with neighbor
+            electrode_search_range.remove(96)
+        elif sub == 'R1397D':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 110]
+            electrode_search_range.remove(60) 
+        elif sub == 'R1405E' and mont==0:
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 44]
+        elif sub == 'R1405E' and mont==1:
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 79]
+        elif sub == 'R1447M': # overlapping with neighbors. again documented in SWR catFR1 problem sessions ppt 
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 15]
+            electrode_search_range.remove(17)
+        elif sub == 'R1469D':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 16]
+        elif sub == 'R1489E':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 3] # first entorhinal...see catFR1 prob session ppt
+            electrode_search_range.remove(55)
+        elif sub == 'R1400N':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 39] # entorhinal...middle of 3 consecutive channels
+        elif sub == 'R1190P':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 96] # entorhinal...3rd of 4 consecutive channels
+        elif sub == 'R1092J':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 39] # entorhinal...3rd of 4 consecutive channels
+        elif sub == 'R1028M':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 8] # entorhinal...3rd of 4 consecutive channels
+        elif sub == 'R1107J':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 3] # parahippocampal...4th of 5 consecutive channels
+        elif sub == 'R1364C':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 60] # parahippocampal...3rd of 4 consecutive channels
+    return electrode_search_range
 
 def ClusterRun(function, parameter_list, max_cores=100):
     '''function: The routine run in parallel, which must contain all necessary
