@@ -356,6 +356,7 @@ def get_multitaper_power(eegs, time, freqs):
     
     time_range = time # how long is eeg?
     arr = ptsa_to_mne(eegs,time_range)
+    
     #Use MNE for multitaper power
     pows, fdone = mne.time_frequency.psd_multitaper(arr, fmin=freqs[0], fmax=freqs[-1], tmin=0.0,
                                                        verbose=False);
@@ -371,11 +372,28 @@ def get_tfr_multitaper_power(eegs, freqs, n_cycles, TBW, time):
 
     time_range = time # how long is eeg?
     arr = ptsa_to_mne(eegs,time_range)
+    
     # this multitaper program allows you to smooth via cycles at each frequency
     pows = mne.time_frequency.tfr_multitaper(arr, freqs=freqs, n_cycles=n_cycles,
                            time_bandwidth=TBW, return_itc=False, average=False)
     pows = np.mean(np.mean(np.log10(pows.data),2),2) # average across freqs and times to get n_epochs X chs
     return pows
+
+def get_multitaper_power_with_freqs(eegs, time, freqs):
+    # note: must be in ptsa format!!
+    from ptsa.data.timeseries import TimeSeriesX
+    import mne
+    
+    time_range = time # how long is eeg?
+    arr = ptsa_to_mne(eegs,time_range)
+
+    #Use MNE for multitaper power
+    pows, fdone = mne.time_frequency.psd_multitaper(arr, fmin=freqs[0], fmax=freqs[-1], tmin=0.0,
+                                                       verbose=False);
+    # don't average over frequencies!!
+    #pows = np.mean(np.log10(pows), 2) #will be shaped n_epochs, n_channels
+    
+    return pows,fdone # powers and freq. done
 
 def find_sat_events(eegs,acceptable_saturations):
     #Return array of chans x events with 1s where saturation is found   
