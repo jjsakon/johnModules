@@ -773,6 +773,7 @@ def correctEEGoffset(sub,session,exp,reader,events):
     sub_num = [int(s) for s in re.findall(r'\d+',sub)] # extract number for sub   
     
     temp_eeg = reader.load_eeg(events=events, rel_start=0, rel_stop=100) # just to get sampling rate
+
     sr = temp_eeg.samplerate
     sr_factor = 1000/sr
     
