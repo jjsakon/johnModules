@@ -1214,6 +1214,29 @@ def getSubSessPredictors(sub_names,sub_sess_names,trial_nums,electrode_labels,ch
         
     return subject_name_array,session_name_array,electrode_array,channel_coords_array
 
+def getSubSessPredictorsWithChannelNums(sub_names,sub_sess_names,trial_nums,electrode_labels,channel_coords,channel_nums):
+    # get arrays of predictors for each trial so can set up ME model
+    # 2020-08-31 get electrode labels too
+    
+    subject_name_array = []
+    session_name_array = []
+    electrode_array = []
+    channel_coords_array = []
+    channel_nums_array = []
+
+    trial_ct = 0
+    for ct,subject in enumerate(sub_names):    
+        trials_this_loop = int(trial_nums[ct])
+        trial_ct = trial_ct + trials_this_loop 
+        # update each array with subjects, sessions, and other prdictors
+        subject_name_array.extend(np.tile(subject,trials_this_loop))
+        session_name_array.extend(np.tile(sub_sess_names[ct],trials_this_loop))
+        electrode_array.extend(np.tile(electrode_labels[ct],trials_this_loop))
+        channel_coords_array.extend(np.tile(channel_coords[ct],(trials_this_loop,1))) # have to tile trials X 1 or it extends into a vector
+        channel_nums_array.extend(np.tile(channel_nums[ct],(trials_this_loop,1)))
+        
+    return subject_name_array,session_name_array,electrode_array,channel_coords_array,channel_nums_array
+
 def getMixedEffectCIs(binned_start_array,subject_name_array,session_name_array):
     # take a binned array of ripples and find the mixed effect confidence intervals
     # note that output is the net ± distance from mean
