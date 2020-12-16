@@ -304,8 +304,8 @@ def findStimbpLS(evs_on,sub,session,tal_struct):
             temp_site = findAinB([stim_pair[0]],chs)[0]
             print('stimbp set to: '+str(temp_site)+', since anode/cathode pair not in tal_struct for '+sub
                   +', '+str(session)+', Stim pair: '+str(j))
-        stimbp.append(temp_site)    
-    return stimbp,num_trials_each_stimbp
+        stimbp.append(temp_site)  
+    return stimbp,stim_list,chs
 
 def get_tal_distmat(tal_struct):
         
@@ -922,12 +922,16 @@ def run_stim_regression(row, MTL_labels, test_freq_range, fmin, fmax, fmin_pow, 
             stimtag = str(evs_on.iloc[i].stim_params[0]['anode_number'])+'-'+str(evs_on.iloc[i].stim_params[0]['cathode_number'])
             sess_tags.append(stimtag)
         sess_tags = np.array(sess_tags)
-        if len(np.unique(sess_tags))>1:
-            raise('There are '+str(len(np.unique(sess_tags)))+' stimulation pairs in session '+str(session)+' from subject '+sub)
+#         if len(np.unique(sess_tags))>1:
+#             raise('There are '+str(len(np.unique(sess_tags)))+' stimulation pairs in session '+str(session)+' from subject '+sub)
 
         # should really rewrite this to use "pairs" from CMLReaders instead of tal_struct
         tal_struct, bipolar_pairs, mpchans = get_bp_tal_struct(sub, montage=mont, localization=loc)
-        elec_regions,_ = get_elec_regions(tal_struct)      
+        
+        pairs = reader.load('pairs')
+        localizations = reader.load('localization')
+        
+        elec_regions,_,_,_ = get_elec_regions(localizations,pairs)      
         distmat = get_tal_distmat(tal_struct) 
         # stimbp is the bipolar PAIR from tal_struct that contains the anode and cathode contacts
         stimbp,_ = findStimbp(evs_on,sub,session,tal_struct,exp)
