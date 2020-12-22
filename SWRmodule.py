@@ -1261,6 +1261,30 @@ def getMixedEffectCIs(binned_start_array,subject_name_array,session_name_array):
     
     return CI_plot
 
+def getMixedEffectSEs(binned_start_array,subject_name_array,session_name_array):
+    # take a binned array of ripples and find the mixed effect confidence intervals
+    # note that output is the net ± distance from mean
+    import statsmodels.formula.api as smf
+
+    # now, to set up ME regression, append each time_bin to bottom and duplicate
+    mean_values = []
+    SEs = [] #CIs = []
+    for time_bin in range(np.shape(binned_start_array)[1]):
+        ripple_rates = binned_start_array[:,time_bin]
+        CI_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates})
+        # now get the CIs JUST for this time bin
+        vc = {'session':'0+session'}
+        get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", CI_df, groups="subject", vc_formula=vc)
+        bin_model = get_bin_CI_model.fit(reml=False, method='nm')
+        mean_values.append(bin_model.params.Intercept)
+#         CIs = superVstack(CIs,bin_model.conf_int().iloc[0].values)
+        # instead of CIs (which are rather conservative and wide) let's use SEs
+        SEs.append(bin_model.bse_fe)
+    # get CI distances at each bin by subtracting from means
+    SE_plot = superVstack(np.array(SEs).T,np.array(SEs).T)
+    
+    return SE_plot
+
 def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
     # returns mixed effect model for the given trial X bins array by comparing bins
     import statsmodels.formula.api as smf
