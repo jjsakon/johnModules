@@ -1285,6 +1285,22 @@ def getMixedEffectSEs(binned_start_array,subject_name_array,session_name_array):
     
     return SE_plot
 
+def fixSEgaps(SE_plot):
+    # fill in places where ME model for that bin didn't converge
+    # shouldn't be an issue once we move from 40% to 100% of the data!
+    for i,tbin in enumerate(SE_plot[0]):
+        if isNaN(tbin):
+            if (i>0) and (i<len(SE_plot[0])):
+                SE_plot[0][i] = np.mean([SE_plot[0][i-1],SE_plot[0][i+1]])
+                SE_plot[1][i] = np.mean([SE_plot[1][i-1],SE_plot[1][i+1]])
+            elif i>0:
+                SE_plot[0][i] = SE_plot[0][i-1]
+                SE_plot[1][i] = SE_plot[1][i-1]
+            elif i<len(SE_plot[0]):
+                SE_plot[0][i] = SE_plot[0][i+1]
+                SE_plot[1][i] = SE_plot[1][i+1]
+    return SE_plot
+
 def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
     # returns mixed effect model for the given trial X bins array by comparing bins
     import statsmodels.formula.api as smf
