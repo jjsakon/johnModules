@@ -298,9 +298,10 @@ def findStimbpLS(evs_on,sub,session,tal_struct):
     for j,stim_pair in enumerate(all_stim): # find bp chan for each of stim pairs
         temp_site = np.nan
         for idx,ch_pair in enumerate(chs):
-            if sum(stim_pair==np.array(ch_pair))==2: # if the anode/cathode pair were recorded from (not always the case!)
+            if (sum(stim_pair==np.array(ch_pair))==2) or \
+                (sum(stim_pair==np.flip(ch_pair))==2): # if the anode/cathode pair were recorded from (not always the case!)
                 temp_site = idx
-        if np.isnan(temp_site): # if anode/cathode pair don't have a site...just grab first from anode    
+        if np.isnan(temp_site): # if anode/cathode pair don't have a site...just grab first from anode  
             temp_site = findAinB([stim_pair[0]],chs)[0]
             print('stimbp set to: '+str(temp_site)+', since anode/cathode pair not in tal_struct for '+sub
                   +', '+str(session)+', Stim pair: '+str(j))
