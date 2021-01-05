@@ -308,6 +308,48 @@ def findStimbpLS(evs_on,sub,session,tal_struct):
         stimbp.append(temp_site)  
     return stimbp,stim_list,chs
 
+def getLSanalysisMask(LS_df):
+    
+    # for LocationSearch we often repeat sessions with same stimulus set so this mask will
+    # tell you on what trial in df to analyze after combining the previous ones with same set
+
+    df_analysis_mask = []
+
+    for i,row in enumerate(LS_df.itertuples()):
+
+        # first check the electrodes and combine the data
+
+        reader = CMLReadDFRow(row)
+
+        # get bipolar pairs
+        sub = row.subject; session = row.session
+        mont = int(row.montage); loc = int(row.localization)
+        evs = reader.load('events')  
+        evs_on = evs[evs['type']=='STIM_ON'] #Get events, structured around stim electrodes
+
+        # should really rewrite this to use "pairs" from CMLReaders instead of tal_struct
+        tal_struct, bipolar_pairs, mpchans = get_bp_tal_struct(sub, montage=mont, localization=loc)
+        stimbp,_,_ = findStimbpLS(evs_on,sub,session,tal_struct)
+
+        # first identify which rows in LS_df need to be combined because they have same stim sites
+
+        # check if last session had same stimbp
+        if i==0:
+            last_stimbp = copy(stimbp) # always append on next trial
+
+        elif (last_stimbp==stimbp):
+
+            df_analysis_mask.append(0)
+
+        elif (last_stimbp!=stimbp): # analyze 1-back since this one doesn't match
+
+            df_analysis_mask.append(1)
+            last_stimbp = copy(stimbp) # start again with current one
+
+    df_analysis_mask.append(1) # will always analyze at end of df
+
+    return df_analysis_mask
+
 def get_tal_distmat(tal_struct):
         
     #Get distance matrix

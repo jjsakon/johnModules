@@ -21,6 +21,17 @@ def splitUpString(string,delimiter=''):
         split_array = np.array(list(map(float,string.split(delimiter))))
     return split_array
 
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    '''
+    # sort strs in human order
+    example: alist.sort(key=natural_keys) sorts in human order
+    '''
+    import re
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+
 def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     # make a pairwise comparison errorbar plot with swarm and FDR significance overlaid
     # comp_data: list of vectors of pairwise comparison data
