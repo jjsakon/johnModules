@@ -51,7 +51,7 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
         temp['pairwise_data'] = comp_data[i]
         temp['grouping'] = np.tile(comp_names[i],len(comp_data[i]))
         comp_df = comp_df.append(temp,ignore_index=False, sort=True)
-
+    import ipdb; ipdb.set_trace()
     figSub,axSub = plt.subplots(1,1, figsize=figsize)
     axSub.bar( range(len(comp_names)), [np.mean(i) for i in comp_data], 
               yerr = [2*np.std(i)/np.sqrt(len(i)) for i in comp_data],

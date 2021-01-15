@@ -1028,11 +1028,11 @@ def detectRipplesButter(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
     artifact_buffer = 100 # per Vaz et al 2019 
 
     num_trials = eeg_mne.shape[0]
-    eeg_rip_z = stats.zscore(eeg_rip) # note that Vaz et al averaged over time bins too, so axis=None instead of 0
-    eeg_ied_z = stats.zscore(eeg_ied)
+    eeg_rip_z = stats.zscore(eeg_rip,axis=None) # note that Vaz et al averaged over time bins too, so axis=None instead of 0
+    eeg_ied_z = stats.zscore(eeg_ied,axis=None)
     eeg_diff = np.diff(eeg_mne) # measure eeg gradient and zscore too
     eeg_diff = np.column_stack((eeg_diff,eeg_diff[:,-1]))# make logical arrays same size
-    eeg_diff = stats.zscore(eeg_diff)
+    eeg_diff = stats.zscore(eeg_diff,axis=None)
 
     # convert to logicals and remove IEDs
     ripplelogic = eeg_rip_z>ripthresh
@@ -1067,20 +1067,7 @@ def detectRipplesButter(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
         for ripple in range(len(starts)-1): # loop through ripples before last
             if (starts[ripple+1]-ends[ripple]) < ripple_separation:            
                 ripplelogictrial[ends[ripple]+1:starts[ripple+1]] = 1
-        ripplelogic[trial] = ripplelogictrial # reassign trial with ripples removed  
-        
-#     # now that you have ripples, get the mstime for each so can remove those that overlap across recall events later on
-#     ## NEVERMIND--only remove RECALLS that are too close together to avoid overlaps
-#     ripple_mstimes = np.zeros((ripplelogic.shape))
-#     for trial in range(num_trials):
-#         ripplelogictrial = ripplelogic[trial]
-#         temp_time_array = np.zeros(len(ripplelogictrial))
-#         if np.sum(ripplelogictrial)==0:
-#             continue
-#         starts,_ = getLogicalChunks(ripplelogictrial)    
-#         for ripple in range(len(starts)):
-#             temp_time_array[starts[ripple]] = int(mstimes[trial]+starts[ripple]*sr_factor)
-#         ripple_mstimes[trial] = temp_time_array    
+        ripplelogic[trial] = ripplelogictrial # reassign trial with ripples removed      
     
     return ripplelogic,iedlogic #,ripple_mstimes
 
