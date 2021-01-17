@@ -13,12 +13,12 @@ from ptsa.data.filters import morlet
 from ptsa.data.filters import ButterworthFilter
 from general import *
 
-# all the unique sub names for FR tasks in df. Need fixed list so can do 1/3rd/2/3rd data split
+# all the unique sub names for FR tasks in df. Need fixed list so can do 40/60 data split
 # note that for FR1 this was before localization.pairs pipeline was added.
 # catFR1 this was after localizations.pairs pipeline was added.
 # comes from np.unique(sub_names) after loading all HPC recall data from exp_df.
-# NOTE: DON'T ALTER THESE since the 1/3rd/2/3rd split is based on these names and order...
-#       ...but to get the number of subjects name sure to do len(sub_names) after loading cluster data
+# NOTE: DON'T ALTER THESE since the 40/60 split is based on these names and order...
+#       ...but to get the number of subject names be sure to do len(sub_names) after loading cluster data
 total_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
        'R1022J', 'R1027J', 'R1032D', 'R1033D', 'R1034D', 'R1035M',
        'R1044J', 'R1045E', 'R1048E', 'R1049J', 'R1052E', 'R1054J',
