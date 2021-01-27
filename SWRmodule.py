@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from cmlreaders import CMLReader, get_data_index
 import sys
 import os
 import matplotlib.pyplot as plt
@@ -1385,16 +1384,6 @@ def SubjectDataFrames(sub_list):
     indices = functools.reduce(lambda x,y: x|y, indices_list)
     df_matched = df[indices]
     return df_matched
-
-def CMLReadDFRow(row):
-    '''for row in df.itertuples():
-            reader = CMLReadDFRow(row)
-    '''
-    rd = row._asdict() # this takes df and takes values from 1 row as a dict
-    return CMLReader(rd['subject'], rd['experiment'], rd['session'], \
-                     montage=rd['montage'], localization=rd['localization'])
-    # dirty secret: Readers reads: eegoffset, experiment, subject, and eegfile...but really should
-    # pass in sessions since sampling rate could theoretically change...
 
 def GetElectrodes(sub,start,stop):
     df_sub = SubjectDataFrames(sub)

@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from cmlreaders import CMLReader, get_data_index
 import sys
 import os
 import matplotlib.pyplot as plt
@@ -13,12 +12,12 @@ from ptsa.data.filters import morlet
 from ptsa.data.filters import ButterworthFilter
 from general import *
 
-# all the unique sub names for FR tasks in df. Need fixed list so can do 1/3rd/2/3rd data split
+# all the unique sub names for FR tasks in df. Need fixed list so can do 40/60 data split
 # note that for FR1 this was before localization.pairs pipeline was added.
 # catFR1 this was after localizations.pairs pipeline was added.
 # comes from np.unique(sub_names) after loading all HPC recall data from exp_df.
-# NOTE: DON'T ALTER THESE since the 1/3rd/2/3rd split is based on these names and order...
-#       ...but to get the number of subjects name sure to do len(sub_names) after loading cluster data
+# NOTE: DON'T ALTER THESE since the 40/60 split is based on these names and order...
+#       ...but to get the number of subject names be sure to do len(sub_names) after loading cluster data
 total_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
        'R1022J', 'R1027J', 'R1032D', 'R1033D', 'R1034D', 'R1035M',
        'R1044J', 'R1045E', 'R1048E', 'R1049J', 'R1052E', 'R1054J',
@@ -538,6 +537,9 @@ def get_itemno_matrices(df, itemno_values='item_num', list_index=['subject', 'se
     return pres_itemnos, rec_itemnos, pres_itemnos_df, rec_itemnos_df
     
 def get_bp_tal_struct(sub, montage, localization):
+    
+    # inputs: subject name, montage, localization
+    # outputs: 
     
     from ptsa.data.readers import TalReader    
    
@@ -1382,16 +1384,6 @@ def SubjectDataFrames(sub_list):
     indices = functools.reduce(lambda x,y: x|y, indices_list)
     df_matched = df[indices]
     return df_matched
-
-def CMLReadDFRow(row):
-    '''for row in df.itertuples():
-            reader = CMLReadDFRow(row)
-    '''
-    rd = row._asdict() # this takes df and takes values from 1 row as a dict
-    return CMLReader(rd['subject'], rd['experiment'], rd['session'], \
-                     montage=rd['montage'], localization=rd['localization'])
-    # dirty secret: Readers reads: eegoffset, experiment, subject, and eegfile...but really should
-    # pass in sessions since sampling rate could theoretically change...
 
 def GetElectrodes(sub,start,stop):
     df_sub = SubjectDataFrames(sub)

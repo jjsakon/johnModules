@@ -22,6 +22,7 @@ def splitUpString(string,delimiter=''):
     return split_array
 
 def atoi(text):
+    # for natural_keys below
     return int(text) if text.isdigit() else text
 
 def natural_keys(text):
@@ -51,7 +52,7 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
         temp['pairwise_data'] = comp_data[i]
         temp['grouping'] = np.tile(comp_names[i],len(comp_data[i]))
         comp_df = comp_df.append(temp,ignore_index=False, sort=True)
-    import ipdb; ipdb.set_trace()
+
     figSub,axSub = plt.subplots(1,1, figsize=figsize)
     axSub.bar( range(len(comp_names)), [np.mean(i) for i in comp_data], 
               yerr = [2*np.std(i)/np.sqrt(len(i)) for i in comp_data],
@@ -80,7 +81,7 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     print(fdr_pvalues)
     return fdr_pvalues
 
-def plotHistoBar(values,start,end,bin_size,tick_range_divisor=1,normalize=False):
+def plotHistoBar(values,start,end,bin_size,tick_range_divisor=1,normalize=False,log_scale=False):
     # e.g. plotHistoBar(lengths,0,0.2,0.01,tick_range=np.arange(0,0.2,0.05),normalize=True)
     # properly plot a histogram (with the values shown in the current bins!)
     # input: values: what to create histogram of
@@ -89,6 +90,9 @@ def plotHistoBar(values,start,end,bin_size,tick_range_divisor=1,normalize=False)
     #        tick_range: np.arange where you wanted labeled ticks
     import matplotlib.pyplot as plt
     bins = np.arange(start,end+bin_size+bin_size/1000,bin_size) # added bin+0.001 to show last bin and last tick
+    if log_scale == True:
+        bins = np.logspace(np.log10(bins[1]),np.log10(bins[-1]),len(bins))
+        
     hist = np.histogram(values,bins)
     if normalize == True:
         yvalues = hist[0]/sum(hist[0])
@@ -96,7 +100,7 @@ def plotHistoBar(values,start,end,bin_size,tick_range_divisor=1,normalize=False)
         yvalues = hist[0]
     xr = (bins[1:]+bins[:-1])/2
     ax = plt.bar(xr,yvalues,width=0.8*bin_size)
-    
+
     # get ticks
     wanted_ticks = np.arange(bins[0],bins[-1]+bin_size/1000,bin_size*tick_range_divisor)
     wanted_ticks = np.around(wanted_ticks,3) # for some reason arange loses precision sometimes
@@ -109,6 +113,15 @@ def plotHistoBar(values,start,end,bin_size,tick_range_divisor=1,normalize=False)
         else:
             has_ticks.append(False)
     plt.xticks(xr[has_ticks[:-1]]-bin_size/2,ticks) # [:-1 since took midpoints to get xr above]
+    if log_scale == True:
+        plt.xscale('log')
+        
+def plotLogHist(x, bins):
+    import matplotlib.pyplot as plt
+    hist, bins = np.histogram(x, bins=bins)
+    logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+    plt.hist(x, bins=logbins)
+    plt.xscale('log')
 
 def tscorePlot(mdl,yrange=7.5,names=None): 
     # plot the tscores with 2 SEs shaded for model results
