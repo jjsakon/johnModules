@@ -60,8 +60,51 @@ total_sub_names_catFR1 = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R10
        'R1467M', 'R1468J', 'R1469D', 'R1472T', 'R1473J', 'R1476J',
        'R1477J', 'R1482J', 'R1484T', 'R1486J', 'R1487T', 'R1488T',
        'R1489E', 'R1491T', 'R1493T', 'R1496T', 'R1497T', 'R1498D',
-       'R1499T', 'R1501J', 'R1505J', 'R1515T', 'R1518T']
+       'R1499T', 'R1501J', 'R1505J', 'R1515T', 'R1518T', 'R1525J',
+       'R1526J', 'R1527J', 'R1530J', 'R1532T', 'R1533J', 'R1536J'] # updated 2021-01-28 to include 7 new patients
 # unique site codes: C, D, E, J, M, N, P, T
+
+def getSplitDF(exp_df,sub_selection,exp):
+    # get the 40/60% splits I used for exploratory analysis/confirmation set (see https://osf.io/y5zwt for registration)
+    
+    # for seed in np.arange(44444,44499): # how I originally searched for a seed that gave 40/60 split with proportions I set below
+    #     print(seed); ripple_array = []; sub_names = []
+
+    # Makes most sense to take half the subjects 
+    if exp == 'FR1':
+        np.random.seed(44462) # seed 44462 gives 25,845 of 60,417 recall trials (42.8%). Or 57/167 (34.1% of subs)
+        # subject numbers via len(np.unique(subject_name_array)) after loading half_df or exp_df
+        from SWRmodule import total_sub_names_FR1 # all the unique sub names for FR1 task in df
+        if sub_selection == 'whole':
+            analysis_df = exp_df
+        else:
+            proportion_subs = 0.5 # it's really 0.5 of initial pre-localization.pairs subs. So comes out to numbers above. And what we want to match for catFR1
+            first_half_sub_names = np.random.permutation(np.unique(total_sub_names_FR1))[:int(np.floor(len(np.unique(total_sub_names_FR1))*proportion_subs))]
+            if sub_selection == 'first_half':
+                half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb in first_half_sub_names]
+            else:
+                half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb not in first_half_sub_names]
+            analysis_df = exp_df.iloc[half_sub_idxs]
+    elif exp == 'catFR1':
+        np.random.seed(44455) # seed 44455 gives 20,393 of 50,053 recall trials (40.7%). Or 46/138 (33.3% of subs)
+        from SWRmodule import total_sub_names_catFR1 # all the unique sub names for FR1 task in df
+        if sub_selection == 'whole':
+            analysis_df = exp_df
+        else:
+            total_sub_names_catFR1 = total_sub_names_catFR1[:-7] # first 40% (half) was done before I added 7 new patients
+            proportion_subs = 0.35 
+            first_half_sub_names = np.random.permutation(np.unique(total_sub_names_catFR1))[:int(np.floor(len(np.unique(total_sub_names_catFR1))*proportion_subs))]
+            if sub_selection == 'first_half':
+                half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb in first_half_sub_names]
+            else: # second half (really ~60%)
+                # note that this will include the new subs since it's searching exp_df.subject by names
+                half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb not in first_half_sub_names]
+            analysis_df = exp_df.iloc[half_sub_idxs]
+    # visually check to make sure you're selecting right patients
+    print(first_half_sub_names[:10]) # catFR1 first 10 starts with R1393T
+    print(first_half_sub_names[-10:]) # catFR1 last 10 starts with R1386T
+            
+    return analysis_df
 
 def Log(s, logname):
     date = datetime.datetime.now().strftime('%F_%H-%M-%S')
