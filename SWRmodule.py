@@ -70,7 +70,7 @@ def getSplitDF(exp_df,sub_selection,exp):
     # for seed in np.arange(44444,44499): # how I originally searched for a seed that gave 40/60 split with proportions I set below
     #     print(seed); ripple_array = []; sub_names = []
 
-    # Makes most sense to take half the subjects 
+    first_half_sub_names = []
     if exp == 'FR1':
         np.random.seed(44462) # seed 44462 gives 25,845 of 60,417 recall trials (42.8%). Or 57/167 (34.1% of subs)
         # subject numbers via len(np.unique(subject_name_array)) after loading half_df or exp_df
@@ -1496,6 +1496,8 @@ def getElectrodeRanges(elec_regions,exp,sub,session,mont):
             electrode_search_range = [i for i in range(len(elec_regions)) if i != 3] # parahippocampal...4th of 5 consecutive channels
         elif sub == 'R1364C':
             electrode_search_range = [i for i in range(len(elec_regions)) if i != 60] # parahippocampal...3rd of 4 consecutive channels
+        elif sub == 'R1527J':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 156] # consecutive channels with repeated signal
     return electrode_search_range
 
 def ClusterRun(function, parameter_list, max_cores=100):

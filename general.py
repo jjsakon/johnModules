@@ -60,6 +60,9 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     # make dataframe
     comp_df = pd.DataFrame(columns=col_names)
     for i in range(len(comp_data)):
+        # remove NaNs
+        comp_data[i] = np.array(comp_data[i])[~np.isnan(comp_data[i])]
+        
         temp = pd.DataFrame(columns=col_names)
         temp['pairwise_data'] = comp_data[i]
         temp['grouping'] = np.tile(comp_names[i],len(comp_data[i]))
@@ -80,7 +83,7 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     sig_after_correction = fdrcorrection(p_values)[0]
     for i in range(len(sig_after_correction)):
         if sig_after_correction[i]==True:
-            plt.text(i-0.07,-4,'*',size=20)
+            plt.text(i-0.07,-4.5,'*',size=20)
     print('FDR-corrected p-values for each:')
     fdr_pvalues = fdrcorrection(p_values)[1]
 
