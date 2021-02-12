@@ -44,6 +44,11 @@ def CMLReadDFRow(row):
                      montage=rd['montage'], localization=rd['localization'])
     # dirty secret: Readers reads: eegoffset, experiment, subject, and eegfile...but really should
     # pass in sessions since sampling rate could theoretically change...
+    
+def set_pubfig():
+    # seaborn parameters for publication figures
+    import seaborn as sb
+    sb.set_context("paper", rc={"font.size":14,"axes.titlesize":14,"axes.labelsize":14,"axes.ticksize":12,"legend.fontsize":14}) 
 
 def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     # make a pairwise comparison errorbar plot with swarm and FDR significance overlaid
@@ -72,7 +77,7 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     axSub.bar( range(len(comp_names)), [np.mean(i) for i in comp_data], 
               yerr = [2*np.std(i)/np.sqrt(len(i)) for i in comp_data],
               color = (0.5,0.5,0.5), error_kw={'elinewidth':8, 'ecolor':(0.7,0.7,0.7)} )
-    sb.swarmplot(x='grouping', y='pairwise_data', data=comp_df, ax=axSub, color=(0,0.5,0.5), alpha=0.3)
+    sb.swarmplot(x='grouping', y='pairwise_data', data=comp_df, ax=axSub, color=(0.8,0,0.8), alpha=0.3)
     axSub.plot([axSub.get_xlim()[0],axSub.get_xlim()[1]],[0,0],linewidth=2,linestyle='--',color=(0,0,0),label='_nolegend_')
     for i in range(len(comp_names)):
         plt.text(i-0.2,-5,'N='+str(len(comp_data[i])))
