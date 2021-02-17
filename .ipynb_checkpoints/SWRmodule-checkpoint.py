@@ -1351,6 +1351,9 @@ def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
     bin_df = pd.DataFrame(data={'session':session_name,'subject':subject_name,
                                'bin':bin_label,'ripple_rates':ripple_rates})
     vc = {'session':'0+session'}
+    # note, even if there's only one subject being used here, as I do for the t-score histograms
+    # this format will still use sessions as random grouping (in other words, same as if I used
+    # "session" instead of "subject" below for a single patient)
     sig_bin_model = smf.mixedlm("ripple_rates ~ bin", bin_df, groups="subject", vc_formula=vc)
     bin_model = sig_bin_model.fit(reml=False, method='nm')
     return bin_model
