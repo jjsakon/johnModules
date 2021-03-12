@@ -88,12 +88,12 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     sig_after_correction = fdrcorrection(p_values)[0]
     for i in range(len(sig_after_correction)):
         if sig_after_correction[i]==True:
-            plt.text(i-0.07,-4.5,'*',size=20)
+            plt.text(i-0.07,4.5,'*',size=20)
     print('FDR-corrected p-values for each:')
     fdr_pvalues = fdrcorrection(p_values)[1]
 
     # axSub.set(xticks=[],xticklabels=comp_names)
-    axSub.set_ylim(-5.5,5.5)
+    axSub.set_ylim(-6.25,6.25)
     plt.xlabel(col_names[0])
     plt.ylabel(col_names[1])
     figSub.tight_layout()

@@ -982,7 +982,7 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     eeg_rip[eeg_rip>clip_SD] = clip_SD # clip at 4SD
     eeg_rip = eeg_rip**2 # square
     
-    # FIR lowpass 40 hz filter for Malach dtection algo
+    # FIR lowpass 40 hz filter for Norman dtection algo
     nyquist = sr/2
     ntaps40, beta40 = kaiserord(40, trans_width/nyquist)
     kaiser_40lp_filter = firwin(ntaps40, cutoff=40, window=('kaiser', beta40), scale=False, nyq=nyquist, pass_zero='lowpass')
