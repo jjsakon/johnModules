@@ -932,20 +932,27 @@ def getRetrievalStartAlignmentCorrection(sub,session,exp):
 
 def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
     # get the bad channels and soz/ictal/lesion channels from electrode_categories.txt files
+    
+    # 2021-03-15 rewriting this to put 0 for good electrode, 1 for SOZ, and 2 for bad_electrodes (bad leads or the like)
+    
     bad_bp_mask = np.zeros(len(tal_struct))
     if elecs_cat != []:
-        if remove_soz_ictal == True:
-            bad_elecs = elecs_cat['bad_channel'] + elecs_cat['soz'] + elecs_cat['interictal']
-        else:
-            bad_elecs = elecs_cat['bad_channel']
+
+        bad_elecs = elecs_cat['bad_channel']
+        soz_elecs = elecs_cat['soz'] # + elecs_cat['interictal'] only removing SOZ 2021-03-15
+        
         for idx,tal_row in enumerate(tal_struct):
             elec_labels = tal_row['tagName'].split('-')
             # if there are dashes in the monopolar elec names, need to fix that
             if (len(elec_labels) > 2) & (len(elec_labels) % 2 == 0): # apparently only one of these so don't need an else
                 n2 = int(len(elec_labels)/2)
                 elec_labels = ['-'.join(elec_labels[0:n2]), '-'.join(elec_labels[n2:])]
+
             if elec_labels[0] in bad_elecs or elec_labels[1] in bad_elecs:
+                bad_bp_mask[idx] = 2 # 2 for bad elecs/bad leads
+            if elec_labels[0] in soz_elecs or elec_labels[1] in soz_elecs:
                 bad_bp_mask[idx] = 1
+            
     return bad_bp_mask
 
 def getStartEndArrays(ripple_array):
@@ -1294,7 +1301,7 @@ def getMixedEffectCIs(binned_start_array,subject_name_array,session_name_array):
     return CI_plot
 
 def getMixedEffectSEs(binned_start_array,subject_name_array,session_name_array):
-    # take a binned array of ripples and find the mixed effect confidence intervals
+    # take a binned array of ripples and find the mixed effect SEs at each bin
     # note that output is the net ± distance from mean
     import statsmodels.formula.api as smf
 
