@@ -150,10 +150,13 @@ def getMTLregions(MTL_labels):
 
 def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period,recall_minimum):
     # get strings for path name for save and loading cluster data
-    if remove_soz_ictal == False:
+    if remove_soz_ictal == 0:
         soz_label = 'soz_in'
-    else:
-        soz_label = 'soz_out'
+    elif remove_soz_ictal == 1:
+        soz_label = 'soz_removed'
+    elif remove_soz_ictal == 2:
+        soz_label = 'soz_only'
+        
     recall_selection_name = ''
     if recall_type_switch == 1:
         recall_selection_name = 'FIRSTOFCOMPOUND'
