@@ -3,6 +3,12 @@
 
 import numpy as np
 
+def listUnion(li1, li2): # union of two lists
+    return list(set().union(li1,li2))
+                
+def listDiffs(li1, li2): # get differences between two lists
+    return list(list(set(li1)-set(li2)) + list(set(li2)-set(li1)))
+
 def isNaN(num):
     # handles strings, float8, and float64 unlike np.isnan
     initial_test = num != num
