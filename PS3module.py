@@ -352,7 +352,7 @@ def getLSanalysisMask(LS_df):
 
 def get_tal_distmat(tal_struct):
         
-    #Get distance matrix
+    #Get distance matrix between pairs of bipolar pairs
     pos = []
     for ts in tal_struct:
         x = ts['atlases']['ind']['x']

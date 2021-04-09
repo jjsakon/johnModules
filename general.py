@@ -9,6 +9,9 @@ def listUnion(li1, li2): # union of two lists
 def listDiffs(li1, li2): # get differences between two lists
     return list(list(set(li1)-set(li2)) + list(set(li2)-set(li1)))
 
+def listIntersect(li1, li2): # intersection of two lists
+    return [value for value in li1 if value in li2]
+
 def isNaN(num):
     # handles strings, float8, and float64 unlike np.isnan
     initial_test = num != num

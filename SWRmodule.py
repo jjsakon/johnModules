@@ -811,7 +811,9 @@ def correctEEGoffset(sub,session,exp,reader,events):
     # exp: experiment, typically 'FR1' or 'catFR1' (type str)
     # reader: typical output from CMLReader function (see cmlreaders documentation)
     # events: dataFrame from reader.load('task_events') for your *RETRIEVAL* events of choice; therefore
-    #         aligning eeg to recalls or retrieval_start. Correction is *NOT* needed for encoding alignment
+    #         aligning eeg to recalls or retrieval_start (although see below program if you want to try to 
+    #         align retrieval_start to the end of the beep in addition to fixing the EEG alignment issue). 
+    #         Correction is *NOT* needed for encoding alignment
     
     ## Output ## 
     # events: events with eegoffset correctly aligned to the events
@@ -853,7 +855,7 @@ def correctEEGoffset(sub,session,exp,reader,events):
     return events
 
 def getRetrievalStartAlignmentCorrection(sub,session,exp):
-        ## Fix EEG alignment when using REC_START (start of retreival) for alignment ##
+        ## Fix EEG alignment when using REC_START (start of retrieval) by trying to align to the end of the beep
     # Similar idea as with fixing the EEG alignment issues, except this time various versions of FR1 and
     # catFR1 after implementation of Unity had different beep and star lengths than with pyEPL. The cases are 
     # each explained below, but the general idea is to align the start of retrieval with the end of the beep, 
