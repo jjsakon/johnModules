@@ -811,7 +811,9 @@ def correctEEGoffset(sub,session,exp,reader,events):
     # exp: experiment, typically 'FR1' or 'catFR1' (type str)
     # reader: typical output from CMLReader function (see cmlreaders documentation)
     # events: dataFrame from reader.load('task_events') for your *RETRIEVAL* events of choice; therefore
-    #         aligning eeg to recalls or retrieval_start. Correction is *NOT* needed for encoding alignment
+    #         aligning eeg to recalls or retrieval_start (although see below program if you want to try to 
+    #         align retrieval_start to the end of the beep in addition to fixing the EEG alignment issue). 
+    #         Correction is *NOT* needed for encoding alignment
     
     ## Output ## 
     # events: events with eegoffset correctly aligned to the events
@@ -853,7 +855,7 @@ def correctEEGoffset(sub,session,exp,reader,events):
     return events
 
 def getRetrievalStartAlignmentCorrection(sub,session,exp):
-        ## Fix EEG alignment when using REC_START (start of retreival) for alignment ##
+        ## Fix EEG alignment when using REC_START (start of retrieval) by trying to align to the end of the beep
     # Similar idea as with fixing the EEG alignment issues, except this time various versions of FR1 and
     # catFR1 after implementation of Unity had different beep and star lengths than with pyEPL. The cases are 
     # each explained below, but the general idea is to align the start of retrieval with the end of the beep, 
@@ -1317,7 +1319,7 @@ def getMixedEffectSEs(binned_start_array,subject_name_array,session_name_array):
         # now get the CIs JUST for this time bin
         vc = {'session':'0+session'}
         get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", CI_df, groups="subject", vc_formula=vc)
-        bin_model = get_bin_CI_model.fit(reml=False, method='nm')
+        bin_model = get_bin_CI_model.fit(reml=True, method='nm')
         mean_values.append(bin_model.params.Intercept)
 #         CIs = superVstack(CIs,bin_model.conf_int().iloc[0].values)
         # instead of CIs (which are rather conservative and wide) let's use SEs
@@ -1365,7 +1367,7 @@ def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
     # this format will still use sessions as random grouping (in other words, same as if I used
     # "session" instead of "subject" below for a single patient)
     sig_bin_model = smf.mixedlm("ripple_rates ~ bin", bin_df, groups="subject", vc_formula=vc)
-    bin_model = sig_bin_model.fit(reml=False, method='nm')
+    bin_model = sig_bin_model.fit(reml=True, method='nm',maxiter=2000)
     return bin_model
 
 def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,sub_forgot,sess_forgot,sub_recalled,sess_recalled):
@@ -1417,6 +1419,57 @@ def bootPSTH(point_array,binsize,smoothing_triangle,sr,start_offset): # same as 
     #smoothed = fastSmooth(norm_count[0],5) # use triangular instead, although this gives similar answer
     PSTH = triangleSmooth(norm_count[0],smoothing_triangle)
     return PSTH
+
+def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
+    # make a pairwise comparison errorbar plot with swarm and FDR significance overlaid
+    # comp_data: list of vectors of pairwise comparison data
+    # comp_names: list of labels for each pairwise comparison
+    # col_names: list of 2 names: 1st is what is in data, 2nd is what the grouping of the labels 
+    
+    import pandas as pd
+    from scipy.stats import ttest_1samp
+    from statsmodels.stats.multitest import fdrcorrection
+    import matplotlib.pyplot as plt
+    import seaborn as sb
+
+    # make dataframe
+    comp_df = pd.DataFrame(columns=col_names)
+    for i in range(len(comp_data)):
+        # remove NaNs
+        comp_data[i] = np.array(comp_data[i])[~np.isnan(comp_data[i])]
+        
+        temp = pd.DataFrame(columns=col_names)
+        temp['pairwise_data'] = comp_data[i]
+        temp['grouping'] = np.tile(comp_names[i],len(comp_data[i]))
+        comp_df = comp_df.append(temp,ignore_index=False, sort=True)
+
+    figSub,axSub = plt.subplots(1,1, figsize=figsize)
+    axSub.bar( range(len(comp_names)), [np.mean(i) for i in comp_data], 
+              yerr = [2*np.std(i)/np.sqrt(len(i)) for i in comp_data],
+              color = (0.5,0.5,0.5), error_kw={'elinewidth':8, 'ecolor':(0.7,0.7,0.7)} )
+    sb.swarmplot(x='grouping', y='pairwise_data', data=comp_df, ax=axSub, color=(0.8,0,0.8), alpha=0.3)
+    axSub.plot([axSub.get_xlim()[0],axSub.get_xlim()[1]],[0,0],linewidth=2,linestyle='--',color=(0,0,0),label='_nolegend_')
+    for i in range(len(comp_names)):
+        plt.text(i-0.2,-5,'N='+str(len(comp_data[i])))
+    # put *s for FDR-corrected significance
+    p_values = []
+    for i in range(len(comp_data)):
+        p_values.append(ttest_1samp(comp_data[i],0)[1])
+    sig_after_correction = fdrcorrection(p_values)[0]
+    for i in range(len(sig_after_correction)):
+        if sig_after_correction[i]==True:
+            plt.text(i-0.07,4.575,'*',size=20)
+    print('FDR-corrected p-values for each:')
+    fdr_pvalues = fdrcorrection(p_values)[1]
+
+    # axSub.set(xticks=[],xticklabels=comp_names)
+    axSub.set_ylim(-5.5,5.5)
+    plt.xlabel(col_names[0])
+    plt.ylabel(col_names[1])
+    figSub.tight_layout()
+    
+    print(fdr_pvalues)
+    return fdr_pvalues
 
 def StartFig():
     test = plt.figure();
