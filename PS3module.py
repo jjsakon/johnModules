@@ -296,7 +296,7 @@ def findStimbpLS(evs_on,sub,session,tal_struct):
     chs = [list(temp) for temp in tal_struct['channel']]
     stimbp = []
     for j,stim_pair in enumerate(all_stim): # find bp chan for each of stim pairs
-        temp_site = np.nan
+        temp_site = np.nan        
         for idx,ch_pair in enumerate(chs):
             if (sum(stim_pair==np.array(ch_pair))==2) or \
                 (sum(stim_pair==np.flip(ch_pair))==2): # if the anode/cathode pair were recorded from (not always the case!)

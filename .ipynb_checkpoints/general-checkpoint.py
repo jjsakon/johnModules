@@ -57,7 +57,12 @@ def CMLReadDFRow(row):
 def set_pubfig():
     # seaborn parameters for publication figures
     import seaborn as sb
-    sb.set_context("paper", rc={"font.size":14,"axes.titlesize":14,"axes.labelsize":14,"axes.ticksize":12,"legend.fontsize":14}) 
+    import matplotlib.pyplot as plt
+    sb.set_context("paper", rc={"font.size":14,"axes.titlesize":14,"axes.labelsize":14,
+                                "axes.ticksize":12,"axes.titlesize":14})
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend(fontsize=14)
 
 def plotHistoBar(values,start,end,bin_size,tick_range_divisor=1,normalize=False,log_scale=False):
     # e.g. plotHistoBar(lengths,0,0.2,0.01,tick_range=np.arange(0,0.2,0.05),normalize=True)
