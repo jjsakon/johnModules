@@ -1446,7 +1446,7 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     figSub,axSub = plt.subplots(1,1, figsize=figsize)
     axSub.bar( range(len(comp_names)), [np.mean(i) for i in comp_data], 
               yerr = [2*np.std(i)/np.sqrt(len(i)) for i in comp_data],
-              color = (0.5,0.5,0.5), error_kw={'elinewidth':8, 'ecolor':(0.7,0.7,0.7)} )
+              color = (0.5,0.5,0.5), error_kw={'elinewidth':18, 'ecolor':(0.7,0.7,0.7)} )
     sb.swarmplot(x='grouping', y='pairwise_data', data=comp_df, ax=axSub, color=(0.8,0,0.8), alpha=0.3)
     axSub.plot([axSub.get_xlim()[0],axSub.get_xlim()[1]],[0,0],linewidth=2,linestyle='--',color=(0,0,0),label='_nolegend_')
     for i in range(len(comp_names)):
