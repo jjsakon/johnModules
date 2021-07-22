@@ -184,6 +184,8 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period,recall_mi
         subfolder = 'WHOLE_RETRIEVAL'
     elif selected_period == 'encoding':
         subfolder = 'ENCODING' 
+    elif selected_period == 'math':
+        subfolder = 'MATH'
     
     return soz_label,recall_selection_name,subfolder
 
@@ -798,7 +800,7 @@ def get_tal_distmat(tal_struct):
     return distmat
 
 def correctEEGoffset(sub,session,exp,reader,events):
-    # The EEG for many FR subjects (FR1 and catFR1 in particular) does not align with the events since the 
+    # The EEG for recall times for many FR subjects (FR1 and catFR1 in particular) does not align with the events since the 
     # implementation of Unity. This is a temporary fix for the EEG alignment for these subjects before
     # the data is corrected in Rhino. Subject-by-subject details are here:
     # https://docs.google.com/spreadsheets/d/1co5f7-dPOktGIXZJ7uptv0SwBJhf36TuhVSMFqRC0X8/edit?usp=sharing
@@ -1593,7 +1595,7 @@ def ClusterRun(function, parameter_list, max_cores=100):
     # can add in 'mem':Num where Num is # of GB to allow for memory into extra_params
     #...Nora said it doesn't work tho and no sign it does
     # can also try increasing cores_per_job to >1, but should also reduce num_jobs to not hog
-    # so like 2 and 50 instead of 1 and 100 etc. Went up to 5 for encoding at points
+    # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
         num_jobs=100, cores_per_job=1, \

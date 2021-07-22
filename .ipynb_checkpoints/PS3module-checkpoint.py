@@ -291,7 +291,10 @@ def findStimbp(evs_on,sub,session,tal_struct,exp):
 def findStimbpLS(evs_on,sub,session,tal_struct):
     stim_list = []
     for i in range(evs_on.shape[0]):
-        stim_list.append([evs_on.iloc[i].stim_params[0]['anode_number'],evs_on.iloc[i].stim_params[0]['cathode_number']])
+        if np.unique(evs_on.experiment=='OPS'):
+            stim_list.append([evs_on.iloc[i].stim_params['anode_number'],evs_on.iloc[i].stim_params['cathode_number']])
+        else:
+            stim_list.append([evs_on.iloc[i].stim_params[0]['anode_number'],evs_on.iloc[i].stim_params[0]['cathode_number']])
     all_stim,num_trials_each_stimbp = findUniquePairs(stim_list)
     chs = [list(temp) for temp in tal_struct['channel']]
     stimbp = []
@@ -324,8 +327,13 @@ def getLSanalysisMask(LS_df):
         # get bipolar pairs
         sub = row.subject; session = row.session
         mont = int(row.montage); loc = int(row.localization)
-        evs = reader.load('events')  
-        evs_on = evs[evs['type']=='STIM_ON'] #Get events, structured around stim electrodes
+        
+        if np.unique(LS_df.experiment=='OPS'):
+            evs = reader.load('task_events')  
+            evs_on = evs[evs['type']=='STIM'] #Get events, structured around stim electrodes            
+        else:
+            evs = reader.load('events')  
+            evs_on = evs[evs['type']=='STIM_ON'] #Get events, structured around stim electrodes
 
         # should really rewrite this to use "pairs" from CMLReaders instead of tal_struct
         tal_struct, bipolar_pairs, mpchans = get_bp_tal_struct(sub, montage=mont, localization=loc)
