@@ -186,6 +186,8 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period,recall_mi
         subfolder = 'ENCODING' 
     elif selected_period == 'math':
         subfolder = 'MATH'
+    elif selected_period == 'math_retrieval':
+        subfolder = 'MATH_RETRIEVAL'
     
     return soz_label,recall_selection_name,subfolder
 
