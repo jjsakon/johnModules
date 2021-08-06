@@ -840,7 +840,7 @@ def correctEEGoffset(sub,session,exp,reader,events):
         # for these subs there is a partial beep and 500 ms of eeg lag (see "History of issues 2020-09-08" for examples)
         
         # add time (in units of samples) since the events are already ahead of the eeg
-        events.eegoffset = events.eegoffset+int(np.round(500/sr_factor)) 
+        events.eegoffset = events.eegoffset+int(np.round(500/sr_factor)) # add 500 ms of lag
         
     # subs where unity was implemented for some sessions but not others
     elif (sub=='R1396T' and exp=='catFR1') or (sub=='R1396T' and session==1) or \
