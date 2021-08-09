@@ -366,8 +366,9 @@ def getSerialposOfRecalls(evs_free_recall,word_evs,ln):
     
     list_recalls_df = evs_free_recall[evs_free_recall.list==ln] # recalls df just for this list
     list_words_df = word_evs[word_evs.list==ln] # words df just for this list
-    
-    words = list(list_words_df['item_name']) 
+
+    words = list(list_words_df['item_name'])
+        
     if 'AXE' in words: # GoogleVec doesn't have this spelling of ax (fix for semantic clustering)
         list_words_df = list_words_df.replace('AXE','AX')
         list_recalls_df = list_recalls_df.replace('AXE','AX')
@@ -438,7 +439,14 @@ def removeRepeatsBySerialpos(serialpositions):
 def getOutputPositions(evs,evs_free_recall):       
     # let's get the recall output positions (after selecting which recalls...since can always use df to get original recall list)
     lists_visited = evs_free_recall.list.unique()
-    orig_evs_free_recall = evs[(evs.type=='REC_WORD') & (evs.recalled==True)] # get original 
+    
+    # if UTSW data then can't use evs.recalled for recalled words
+    if np.char.find(str(evs_free_recall[0:1].eegfile.values),'Lega_lab')>-1: 
+        # this would probably work for Rhino data but keep original below just in case   
+        orig_evs_free_recall = evs[(evs.type=='REC_WORD') & (evs.intrusion==0)]
+    else:
+        orig_evs_free_recall = evs[(evs.type=='REC_WORD') & (evs.recalled==True)] # get original 
+ 
     session_corrected_list_ops = []
     for list_num in lists_visited:
         original_list_recalls = orig_evs_free_recall[orig_evs_free_recall.list==list_num] # grab trials from this list from original free recalls
