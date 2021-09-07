@@ -188,6 +188,8 @@ def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period,recall_mi
         subfolder = 'MATH'
     elif selected_period == 'math_retrieval':
         subfolder = 'MATH_RETRIEVAL'
+    elif selected_period == 'whole_encoding':
+        subfolder = 'WHOLE_ENCODING'
     
     return soz_label,recall_selection_name,subfolder
 
@@ -1162,9 +1164,9 @@ def ptsa_to_mne(eegs,time_length): # in ms
 
     sr = int(np.round(eegs.samplerate)) #get samplerate...round 1st since get like 499.7 sometimes  
     eegs = eegs[:, :, :].transpose('event', 'channel', 'time') # make sure right order of names
-    
+
     time = [x/1000 for x in time_length] # convert to s for MNE
-    clips = np.array(eegs[:, :, int(sr*time[0]):int(sr*time[1])])
+    clips = np.array(eegs[:, :, int(np.round(sr*time[0])):int(np.round(sr*time[1]))])
 
     mne_evs = np.empty([clips.shape[0], 3]).astype(int)
     mne_evs[:, 0] = np.arange(clips.shape[0]) # at each timepoint
