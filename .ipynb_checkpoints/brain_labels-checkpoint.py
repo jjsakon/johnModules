@@ -9,6 +9,7 @@ Can import like so: >>>from brain_labels import MTL_labels, LTC_labels, PFC_labe
 see SWRgetRegionNames for details on getting the region names and the order or operations for differnt atlases
 in SWRmodule.
 2020-09-04 JS checked this for catFR too and regions are the same
+2021-10-06 JS adding a general temporal lobe labels
 '''
 
 MTL_stein = ['left ca1','left ca2','left ca3','left dg','left sub','left prc','left ec','left phc','left mtl wm',
@@ -63,6 +64,15 @@ OTHER_labels = cingulate_stein+parietal_stein+other_TL_stein+other_stein+ \
 ALL_labels = MTL_labels+LTC_labels+PFC_labels+OTHER_labels
 
 
+# I want to select all regions in temporal lobe 2021-10-06
+temporal_lobe_labels = MTL_labels+LTC_labels+other_TL_stein+other_TL_ind
+extra_TL = [' left fug fusiform gyrus',' right fug fusiform gyrus','left fug fusiform gyrus','right fug fusiform gyrus',
+          ' left pp planum polare',' right pp planum polare','left pp planum polare','right pp planum polare',
+          ' left pt planum temporale', ' right pt planum temporale','left pt planum temporale', 'right pt planum temporale',
+          ' left ttg transverse temporal gyrus',' right ttg transverse temporal gyrus','left ttg transverse temporal gyrus','right ttg transverse temporal gyrus'
+         ]
+temporal_lobe_labels = temporal_lobe_labels+extra_TL
+
 '''
 # This is the original, which only has labels for those places STIMULATED across PS tasks.
 # The above has regions for the other (record-only) electrodes as well. I dunno why you'd want to use
@@ -89,4 +99,344 @@ parietal_ind = ['inferiorparietal','postcentral','precuneus','superiorparietal',
 occipital_ind = ['cuneus','lateraloccipital','lingual','pericalcarine']
 other_TL_ind = ['fusiform','transversetemporal'] # temporal lobe but not MTL
 other_ind = ['insula','none','precentral','paracentral'] # not sure where to put these
+'''
+
+''' Here's the whole list of reasons gotten by looping over all patients, appending regions, and uniquing:
+ 3rd ventricle
+ left acgg anterior cingulate gyrus
+ left ains anterior insula
+ left amygdala
+ left ang angular gyrus
+ left aorg anterior orbital gyrus
+ left basal forebrain
+ left calc calcarine cortex
+ left caudate
+ left cerebellum exterior
+ left cerebral white matter
+ left co central operculum
+ left cun cuneus
+ left ent entorhinal area
+ left fo frontal operculum
+ left frp frontal pole
+ left fug fusiform gyrus
+ left gre gyrus rectus
+ left hippocampus
+ left inf lat vent
+ left iog inferior occipital gyrus
+ left itg inferior temporal gyrus
+ left lateral ventricle
+ left lig lingual gyrus
+ left lorg lateral orbital gyrus
+ left mcgg middle cingulate gyrus
+ left mfc medial frontal cortex
+ left mfg middle frontal gyrus
+ left mog middle occipital gyrus
+ left morg medial orbital gyrus
+ left mpog postcentral gyrus medial segment
+ left mprg precentral gyrus medial segment
+ left msfg superior frontal gyrus medial segment
+ left mtg middle temporal gyrus
+ left ocp occipital pole
+ left ofug occipital fusiform gyrus
+ left opifg opercular part of the inferior frontal gyrus
+ left orifg orbital part of the inferior frontal gyrus
+ left pcgg posterior cingulate gyrus
+ left pcu precuneus
+ left phg parahippocampal gyrus
+ left pins posterior insula
+ left po parietal operculum
+ left pog postcentral gyrus
+ left porg posterior orbital gyrus
+ left pp planum polare
+ left prg precentral gyrus
+ left pt planum temporale
+ left putamen
+ left sca subcallosal area
+ left sfg superior frontal gyrus
+ left smc supplementary motor cortex
+ left smg supramarginal gyrus
+ left sog superior occipital gyrus
+ left spl superior parietal lobule
+ left stg superior temporal gyrus
+ left thalamus proper
+ left tmp temporal pole
+ left trifg triangular part of the inferior frontal gyrus
+ left ttg transverse temporal gyrus
+ left ventral dc
+ right acgg anterior cingulate gyrus
+ right ains anterior insula
+ right amygdala
+ right ang angular gyrus
+ right aorg anterior orbital gyrus
+ right calc calcarine cortex
+ right caudate
+ right cerebellum exterior
+ right cerebral white matter
+ right co central operculum
+ right cun cuneus
+ right ent entorhinal area
+ right fo frontal operculum
+ right frp frontal pole
+ right fug fusiform gyrus
+ right gre gyrus rectus
+ right hippocampus
+ right inf lat vent
+ right iog inferior occipital gyrus
+ right itg inferior temporal gyrus
+ right lateral ventricle
+ right lig lingual gyrus
+ right lorg lateral orbital gyrus
+ right mcgg middle cingulate gyrus
+ right mfc medial frontal cortex
+ right mfg middle frontal gyrus
+ right mog middle occipital gyrus
+ right morg medial orbital gyrus
+ right mpog postcentral gyrus medial segment
+ right mprg precentral gyrus medial segment
+ right msfg superior frontal gyrus medial segment
+ right mtg middle temporal gyrus
+ right ocp occipital pole
+ right ofug occipital fusiform gyrus
+ right opifg opercular part of the inferior frontal gyrus
+ right orifg orbital part of the inferior frontal gyrus
+ right pcgg posterior cingulate gyrus
+ right pcu precuneus
+ right phg parahippocampal gyrus
+ right pins posterior insula
+ right po parietal operculum
+ right pog postcentral gyrus
+ right porg posterior orbital gyrus
+ right pp planum polare
+ right prg precentral gyrus
+ right pt planum temporale
+ right putamen
+ right sca subcallosal area
+ right sfg superior frontal gyrus
+ right smc supplementary motor cortex
+ right smg supramarginal gyrus
+ right sog superior occipital gyrus
+ right spl superior parietal lobule
+ right stg superior temporal gyrus
+ right thalamus proper
+ right tmp temporal pole
+ right trifg triangular part of the inferior frontal gyrus
+ right ttg transverse temporal gyrus
+ba35
+ba36
+ca1
+ca3
+dg
+erc
+misc
+phc
+sub
+sulcus
+No atlas
+ba35
+ba36
+bankssts
+ca1
+caudalanteriorcingulate
+caudalmiddlefrontal
+cuneus
+dg
+entorhinal
+erc
+frontalpole
+fusiform
+inferiorparietal
+inferiortemporal
+insula
+isthmuscingulate
+lateraloccipital
+lateralorbitofrontal
+left acg
+left acgg anterior cingulate gyrus
+left ains anterior insula
+left amy
+left amygdala
+left ang angular gyrus
+left aorg anterior orbital gyrus
+left ca1
+left ca2
+left ca3
+left calc calcarine cortex
+left caudal middle frontal cortex
+left caudate
+left cerebellum exterior
+left cerebral white matter
+left co central operculum
+left cun cuneus
+left dg
+left dlpfc
+left ec
+left ent entorhinal area
+left fo frontal operculum
+left frp frontal pole
+left fug fusiform gyrus
+left fusiform gyrus wm
+left gre gyrus rectus
+left hippocampus
+left inf lat vent
+left iog inferior occipital gyrus
+left itg inferior temporal gyrus
+left lateral ventricle
+left lig lingual gyrus
+left lorg lateral orbital gyrus
+left mcg
+left mcgg middle cingulate gyrus
+left mfc medial frontal cortex
+left mfg middle frontal gyrus
+left middle temporal gyrus
+left mog middle occipital gyrus
+left morg medial orbital gyrus
+left mpog postcentral gyrus medial segment
+left mprg precentral gyrus medial segment
+left msfg superior frontal gyrus medial segment
+left mtg
+left mtg middle temporal gyrus
+left mtl wm
+left ocp occipital pole
+left ofug occipital fusiform gyrus
+left opifg opercular part of the inferior frontal gyrus
+left orifg orbital part of the inferior frontal gyrus
+left pallidum
+left pcg
+left pcgg posterior cingulate gyrus
+left pcu precuneus
+left phc
+left phg parahippocampal gyrus
+left pins posterior insula
+left po parietal operculum
+left pog postcentral gyrus
+left porg posterior orbital gyrus
+left pp planum polare
+left prc
+left precentral gyrus
+left precuneus
+left prg precentral gyrus
+left pt planum temporale
+left putamen
+left sca subcallosal area
+left sfg superior frontal gyrus
+left smc supplementary motor cortex
+left smg supramarginal gyrus
+left sog superior occipital gyrus
+left spl superior parietal lobule
+left stg superior temporal gyrus
+left sub
+left supramarginal gyrus
+left tc
+left thalamus proper
+left tmp temporal pole
+left trifg triangular part of the inferior frontal gyrus
+left ttg transverse temporal gyrus
+left ventral dc
+lingual
+medialorbitofrontal
+middletemporal
+misc
+paracentral
+parahippocampal
+parsopercularis
+parsorbitalis
+parstriangularis
+pericalcarine
+phc
+postcentral
+posteriorcingulate
+precentral
+precuneus
+right accumbens area
+right acg
+right acgg anterior cingulate gyrus
+right ains anterior insula
+right amy
+right amygdala
+right ang angular gyrus
+right aorg anterior orbital gyrus
+right basal forebrain
+right ca1
+right ca2
+right ca3
+right calc calcarine cortex
+right caudal middle frontal cortex
+right caudate
+right cerebellum exterior
+right cerebral white matter
+right co central operculum
+right cun cuneus
+right dg
+right dlpfc
+right ec
+right ent entorhinal area
+right fo frontal operculum
+right frp frontal pole
+right fug fusiform gyrus
+right gre gyrus rectus
+right hippocampus
+right inf lat vent
+right insula
+right iog inferior occipital gyrus
+right itg inferior temporal gyrus
+right lateral ventricle
+right lig lingual gyrus
+right lorg lateral orbital gyrus
+right mcg
+right mcgg middle cingulate gyrus
+right mfc medial frontal cortex
+right mfg middle frontal gyrus
+right middle temporal gyrus
+right mog middle occipital gyrus
+right morg medial orbital gyrus
+right mpog postcentral gyrus medial segment
+right mprg precentral gyrus medial segment
+right msfg superior frontal gyrus medial segment
+right mtg
+right mtg middle temporal gyrus
+right mtl wm
+right ofug occipital fusiform gyrus
+right opifg opercular part of the inferior frontal gyrus
+right orifg orbital part of the inferior frontal gyrus
+right pallidum
+right pcg
+right pcgg posterior cingulate gyrus
+right pcu precuneus
+right phc
+right phg parahippocampal gyrus
+right pins posterior insula
+right po parietal operculum
+right pog postcentral gyrus
+right porg posterior orbital gyrus
+right pp planum polare
+right prc
+right precentral gyrus
+right prg precentral gyrus
+right pt planum temporale
+right putamen
+right sca subcallosal area
+right sfg superior frontal gyrus
+right smc supplementary motor cortex
+right smg supramarginal gyrus
+right sog superior occipital gyrus
+right spl superior parietal lobule
+right stg
+right stg superior temporal gyrus
+right sub
+right superior frontal gyrus
+right supramarginal gyrus
+right thalamus proper
+right tmp temporal pole
+right trifg triangular part of the inferior frontal gyrus
+right ttg transverse temporal gyrus
+rostralanteriorcingulate
+rostralmiddlefrontal
+sulcus
+superiorfrontal
+superiorparietal
+superiortemporal
+supramarginal
+temporalpole
+transversetemporal
+unknown
 '''

@@ -1580,7 +1580,7 @@ def getElectrodeRanges(elec_regions,exp,sub,session,mont):
             electrode_search_range = [i for i in range(len(elec_regions)) if i != 156] # consecutive channels with repeated signal
     return electrode_search_range
 
-def ClusterRun(function, parameter_list, max_cores=100):
+def ClusterRun(function, parameter_list, max_cores=250):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -1610,7 +1610,7 @@ def ClusterRun(function, parameter_list, max_cores=100):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=100, cores_per_job=1, \
+        num_jobs=50, cores_per_job=5, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
