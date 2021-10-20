@@ -100,6 +100,10 @@ def getSplitDF(exp_df,sub_selection,exp):
                 # note that this will include the new subs since it's searching exp_df.subject by names
                 half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb not in first_half_sub_names]
             analysis_df = exp_df.iloc[half_sub_idxs]
+    
+    elif exp == 'RepFR1':
+        analysis_df = exp_df
+        
     # visually check to make sure you're selecting right patients
     print(first_half_sub_names[:10]) # catFR1 first 10 starts with R1393T
     print(first_half_sub_names[-10:]) # catFR1 last 10 starts with R1386T
@@ -1239,8 +1243,8 @@ def fullPSTH(point_array,binsize,smoothing_triangle,sr,start_offset):
 
 def binBinaryArray(start_array,bin_size,sr_factor):
     # instead of PSTH, get a binned binary array that keeps the trials but bins over time
-    bins = np.arange(0,start_array.shape[1],bin_size/sr_factor) #start_array.shape[1]/bin_size*sr_factor
     bin_in_sr = bin_size/sr_factor
+    bins = np.arange(0,start_array.shape[1],bin_in_sr) #start_array.shape[1]/bin_size*sr_factor    
     bin_to_hz = 1000/bin_size*bin_in_sr # factor that converts binned matrix to Hz
     
     binned_array = [] # note this will be at instantaeous rate bin_in_sr multiple lower (e.g. 100 ms bin/2 sr = 50x)
@@ -1413,6 +1417,43 @@ def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,sub_forgot
     sig_bin_model = smf.mixedlm("ripple_rates ~ category", bin_df, groups="subject", vc_formula=vc)
     bin_model = sig_bin_model.fit(reml=False, method='nm')
     return bin_model
+
+def getCategoryRepeatIndicator(sess,electrode_array,session_name_array,category_array):
+    # get an array indicating if each word is from the 1st, 2nd, or 3rd use of a given category
+    
+    first_elec = np.unique(electrode_array[session_name_array == sess])[0] # just take 1st electrode since it's the same categories for each
+    elec_category_array = category_array[( (session_name_array == sess) & (electrode_array == first_elec) )]
+
+    # how many words from each category?
+    num_each_cat = []
+    for word in np.unique(elec_category_array):
+        num_each_cat.append(sum(elec_category_array==word))
+    # print('Words presented per category:')
+    # np.array(num_each_cat)
+    # sum(num_each_cat)
+
+    # create empty list of right size
+    category_repeat_array = np.zeros(sum(num_each_cat)) # is this the 1st, 2nd, or 3rd time this category has been used in the session?
+
+    idx_sort = np.argsort(elec_category_array)
+    sorted_elec_category_array = elec_category_array[idx_sort]
+    vals, idx_start, count = np.unique(sorted_elec_category_array, return_counts=True, return_index=True)
+    # splits the indices into separate arrays for each category
+    separate_category_arrays = np.split(idx_sort, idx_start[1:])
+
+    # now take each separate category, sort it by idx number, and indicate if it's the 1st, 2nd, or 3rd time used in a given session
+
+    for cats in separate_category_arrays:
+        ct = 0
+        cat_usage_ct = 1 # start at 1 and go to 3
+        sorted_cats = np.sort(cats)
+        for word in sorted_cats:
+            category_repeat_array[word] = cat_usage_ct # place the usage of this category in the right index
+            ct+=1
+            if ct % 4 == 0:
+                cat_usage_ct+=1 # if went through 4 words already, can bump up usage count
+                
+    return category_repeat_array
 
 def bootPSTH(point_array,binsize,smoothing_triangle,sr,start_offset): # same as above, but single output so can bootstrap
     # point_array is binary point time (spikes or SWRs) v. trial
