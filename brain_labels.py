@@ -221,7 +221,7 @@ other_ind = ['insula','none','precentral','paracentral'] # not sure where to put
  right tmp temporal pole
  right trifg triangular part of the inferior frontal gyrus
  right ttg transverse temporal gyrus
-ba35
+ba35 # these had dashes before
 ba36
 ca1
 ca3

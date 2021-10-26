@@ -361,10 +361,13 @@ def getSerialposFromDataframes(list_words_df,list_recalls_df):
     recalls_serial_pos = []
     for w in list_recalls_df.item_name:
         if w in np.array(list_words_df.item_name):
-            recalls_serial_pos.append(int(list_words_df[list_words_df.item_name==w].serialpos))
+            temp_values = list_words_df[list_words_df.item_name==w].serialpos.values
+            # only 1 in FR/catFR and want this to stay as an array 
+            recalls_serial_pos.append(temp_values[0]) # for repFR1 just take first serialpos since only using serialpos to identify repeats
         else:
             recalls_serial_pos.append(-999)
     # recalls_serial_pos = [int(list_words_df[list_words_df.item_name==w].serialpos) for w in list_recalls_df.item_name] # old way
+
     return recalls_serial_pos
 
 def getSerialposOfRecalls(evs_free_recall,word_evs,ln):
@@ -390,18 +393,17 @@ def removeRepeatedRecalls(evs_free_recall,word_evs):
     #.     so in this case the place to look for clustering is before A and before the second B
     
     # output for indicator: 0 means repeat, 1 means good recall, 2 means second of 2 which is ok to use too
-    
+
     nonrepeat_indicator = np.ones(len(evs_free_recall))    
     list_nums = evs_free_recall.list.unique()   
     for ln in list_nums:
         evs_idxs_for_list_recalls = np.where(evs_free_recall.list==ln)[0] # idxs in evs df so can set repeats to 0        
-       
         recalls_serial_pos = getSerialposOfRecalls(evs_free_recall,word_evs,ln)
         
         _,repeats_to_remove = removeRepeatsBySerialpos(recalls_serial_pos) # get idxs for this list of which recalls are repeats
         
         if len(repeats_to_remove)>0:
-            temp_evs_idxs = evs_idxs_for_list_recalls[repeats_to_remove] # grab right indxs for the whole session index
+            temp_evs_idxs = evs_idxs_for_list_recalls[repeats_to_remove] # grab right idxs for the whole session index
             nonrepeat_indicator[temp_evs_idxs] = 0 # so now 1 means good recall and 0 means repeated recall
             
             # HOWEVER, if the repeats are consecutive, the transitions are really still valid. 
@@ -427,7 +429,7 @@ def removeRepeatedRecalls(evs_free_recall,word_evs):
     return evs_free_recall,nonrepeat_indicator
 
 def removeRepeatsBySerialpos(serialpositions):
-    #Takes array of numbers (serial positions) and removes any repeated ones
+    # Takes array of numbers (serial positions) and removes any repeated ones
     # note that this considers -999s as repeats but that's fine since removed anyway as intrusions
     items_to_keep = np.ones(len(serialpositions)).astype(bool)
     items_seen = []
@@ -449,6 +451,8 @@ def getOutputPositions(evs,evs_free_recall):
     # if UTSW data then can't use evs.recalled for recalled words
     if np.char.find(str(evs_free_recall[0:1].eegfile.values),'Lega_lab')>-1: 
         # this would probably work for Rhino data but keep original below just in case   
+        orig_evs_free_recall = evs[(evs.type=='REC_WORD') & (evs.intrusion==0)]
+    elif evs.iloc[0].experiment == 'RepFR1':
         orig_evs_free_recall = evs[(evs.type=='REC_WORD') & (evs.intrusion==0)]
     else:
         orig_evs_free_recall = evs[(evs.type=='REC_WORD') & (evs.recalled==True)] # get original 
@@ -1621,7 +1625,7 @@ def getElectrodeRanges(elec_regions,exp,sub,session,mont):
             electrode_search_range = [i for i in range(len(elec_regions)) if i != 156] # consecutive channels with repeated signal
     return electrode_search_range
 
-def ClusterRun(function, parameter_list, max_cores=250):
+def ClusterRun(function, parameter_list, max_cores=200):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -1651,7 +1655,7 @@ def ClusterRun(function, parameter_list, max_cores=250):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=50, cores_per_job=5, \
+        num_jobs=4, cores_per_job=50, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
