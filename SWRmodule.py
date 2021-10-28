@@ -1299,7 +1299,7 @@ def getSubSessPredictorsWithChannelNums(sub_names,sub_sess_names,trial_nums,elec
         session_name_array.extend(np.tile(sub_sess_names[ct],trials_this_loop))
         electrode_array.extend(np.tile(electrode_labels[ct],trials_this_loop))
         channel_coords_array.extend(np.tile(channel_coords[ct],(trials_this_loop,1))) # have to tile trials X 1 or it extends into a vector
-        channel_nums_array.extend(np.tile(channel_nums[ct],(trials_this_loop,1)))
+        channel_nums_array.extend(np.tile(channel_nums[ct],trials_this_loop))
         
     return subject_name_array,session_name_array,electrode_array,channel_coords_array,channel_nums_array
 
@@ -1466,28 +1466,33 @@ def getRepFRPresentationArray(session_name_array,list_num_key,session_events):
     presentation_array = []
 
     for sess in session_names:
-        sess_list_nums = np.unique(list_num_key[session_name_array==sess])
+        
+        sess_chs = np.unique(session_events.channel_num)
+        
+        for ch in sess_chs: # for each elec pair separately to mimic clusterRun order
+        
+            sess_ch_list_nums = np.unique(list_num_key[( (session_name_array==sess) & (session_events.channel_num==ch) )])
 
-        for ln in sess_list_nums:
-            # for each list in each session, figure out which encoding events are 1p/2p/3p
-            list_item_nums = session_events[((session_name_array==sess) & (list_num_key==ln))].item_num # note this is for *every* electrode
+            for ln in sess_ch_list_nums:
+                # for each list in each session, figure out which encoding events are 1p/2p/3p
+                list_item_nums = session_events[( (session_name_array==sess) & (list_num_key==ln) & (session_events.channel_num==ch) )].item_num 
 
-            if len(list_item_nums) % 27 == 0: # make sure all the words were presented for this list
-                unique_item_nums,item_counts = np.unique(list_item_nums,return_counts=True)
-                item_counter = np.zeros(len(unique_item_nums))
-                list_pres_nums = []
-                for i_num,item in enumerate(list_item_nums):
-                    item_counter[findInd(unique_item_nums==item)]+=1
-                    list_pres_nums.append(int(item_counter[findInd(unique_item_nums==item)]))
-                    # reset if reached end of a full list's worth of presentations (6 3p(which would be 3+2+1), 3 2p (2+1), and 3 1p adds to 48)
-                    if ( ((i_num+1) % 27 == 0) & (sum(item_counter) == 27) ):
-                        item_counter = np.zeros(len(unique_item_nums))
-            else:
-                # I ran this for patients up until 2021-10-27 and only R1579T-1, list_num=16 had this issue (it's accounted for in updated_recalls)
-                print('ONE OF YOUR LISTS DID NOT HAVE 27 WORDS!!!')
-                print(sess)
-                print(ln)
-            presentation_array.extend(list_pres_nums)
+                if len(list_item_nums) % 27 == 0: # make sure all the words were presented for this list
+                    unique_item_nums,item_counts = np.unique(list_item_nums,return_counts=True)
+                    item_counter = np.zeros(len(unique_item_nums))
+                    list_pres_nums = []
+                    for i_num,item in enumerate(list_item_nums):
+                        item_counter[findInd(unique_item_nums==item)]+=1
+                        list_pres_nums.append(int(item_counter[findInd(unique_item_nums==item)]))
+                        # reset if reached end of a full list's worth of presentations (6 3p(which would be 3+2+1), 3 2p (2+1), and 3 1p adds to 48)
+                        if ( ((i_num+1) % 27 == 0) & (sum(item_counter) == 27) ): # this shouldn't happen now
+                            item_counter = np.zeros(len(unique_item_nums))
+                else:
+                    # I ran this for patients up until 2021-10-27 and only R1579T-1, list_num=16 had this issue (it's accounted for in updated_recalls)
+                    print('ONE OF YOUR LISTS DID NOT HAVE 27 WORDS!!!')
+                    print(sess)
+                    print(ln)
+                presentation_array.extend(list_pres_nums)
     presentation_array = np.array(presentation_array)
 
     return presentation_array
@@ -1499,24 +1504,29 @@ def getRepFRRepeatArray(session_name_array,list_num_key,session_events):
     repeat_array = []
 
     for sess in session_names:
-        sess_list_nums = np.unique(list_num_key[session_name_array==sess])
+        
+        sess_chs = np.unique(session_events.channel_num)
+        
+        for ch in sess_chs: # for each elec pair separately to mimic clusterRun order
+            
+            sess_ch_list_nums = np.unique(list_num_key[( (session_name_array==sess) & (session_events.channel_num==ch) )])
 
-        for ln in sess_list_nums:
-            # for each list in each session, figure out which encoding events are 1p/2p/3p
-            list_item_nums = session_events[((session_name_array==sess) & (list_num_key==ln))].item_num # note this is for *every* electrode
+            for ln in sess_ch_list_nums:
+                # for each list in each session, figure out which encoding events are 1p/2p/3p
+                list_item_nums = session_events[((session_name_array==sess) & (list_num_key==ln) & (session_events.channel_num==ch) )].item_num
 
-            if len(list_item_nums) % 27 == 0: # make sure all the words were presented for this list
-                unique_item_nums,item_counts = np.unique(list_item_nums,return_counts=True)
-                pres_nums = item_counts/(sum(item_counts)/27) # this divides by number of electrodes to get back to 1p/2p/3p instead of multiples of it
-                list_pres_nums = []
-                for item_num in list_item_nums:
-                    list_pres_nums.append(int(pres_nums[findInd(unique_item_nums==item_num)]))
-            else:
-                # I ran this for patients up until 2021-10-27 and only R1579T-1, list_num=16 had this issue (it's accounted for in updated_recalls)
-                print('ONE OF YOUR LISTS DID NOT HAVE 27 WORDS!!!')
-                print(sess)
-                print(ln)
-            repeat_array.extend(list_pres_nums)
+                if len(list_item_nums) % 27 == 0: # make sure all the words were presented for this list
+                    unique_item_nums,item_counts = np.unique(list_item_nums,return_counts=True)
+                    pres_nums = item_counts/(sum(item_counts)/27) # this divides by number of electrodes to get back to 1p/2p/3p instead of multiples of it
+                    list_pres_nums = []
+                    for item_num in list_item_nums:
+                        list_pres_nums.append(int(pres_nums[findInd(unique_item_nums==item_num)]))
+                else:
+                    # I ran this for patients up until 2021-10-27 and only R1579T-1, list_num=16 had this issue (it's accounted for in updated_recalls)
+                    print('ONE OF YOUR LISTS DID NOT HAVE 27 WORDS!!!')
+                    print(sess)
+                    print(ln)
+                repeat_array.extend(list_pres_nums)
     repeat_array = np.array(repeat_array)
 
     return repeat_array
