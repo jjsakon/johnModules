@@ -50,7 +50,7 @@ def CMLReadDFRow(row):
     '''
     rd = row._asdict() # this takes df and takes values from 1 row as a dict
     return CMLReader(rd['subject'], rd['experiment'], rd['session'], \
-                     montage=rd['montage'], localization=rd['localization'])
+                     montage=int(rd['montage']), localization=int(rd['localization']))
     # dirty secret: Readers reads: eegoffset, experiment, subject, and eegfile...but really should
     # pass in sessions since sampling rate could theoretically change...
     

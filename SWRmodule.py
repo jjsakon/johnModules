@@ -1459,6 +1459,68 @@ def getCategoryRepeatIndicator(sess,electrode_array,session_name_array,category_
                 
     return category_repeat_array
 
+def getRepFRPresentationArray(session_name_array,list_num_key,session_events):
+    # for RepFR create an array of whether word presentations are 1st, 2nd, or 3rd of their type (type being 1p, 2p, or 3p)
+
+    session_names = np.unique(session_name_array)
+    presentation_array = []
+
+    for sess in session_names:
+        sess_list_nums = np.unique(list_num_key[session_name_array==sess])
+
+        for ln in sess_list_nums:
+            # for each list in each session, figure out which encoding events are 1p/2p/3p
+            list_item_nums = session_events[((session_name_array==sess) & (list_num_key==ln))].item_num # note this is for *every* electrode
+
+            if len(list_item_nums) % 27 == 0: # make sure all the words were presented for this list
+                unique_item_nums,item_counts = np.unique(list_item_nums,return_counts=True)
+                item_counter = np.zeros(len(unique_item_nums))
+                list_pres_nums = []
+                for i_num,item in enumerate(list_item_nums):
+                    item_counter[findInd(unique_item_nums==item)]+=1
+                    list_pres_nums.append(int(item_counter[findInd(unique_item_nums==item)]))
+                    # reset if reached end of a full list's worth of presentations (6 3p(which would be 3+2+1), 3 2p (2+1), and 3 1p adds to 48)
+                    if ( ((i_num+1) % 27 == 0) & (sum(item_counter) == 27) ):
+                        item_counter = np.zeros(len(unique_item_nums))
+            else:
+                # I ran this for patients up until 2021-10-27 and only R1579T-1, list_num=16 had this issue (it's accounted for in updated_recalls)
+                print('ONE OF YOUR LISTS DID NOT HAVE 27 WORDS!!!')
+                print(sess)
+                print(ln)
+            presentation_array.extend(list_pres_nums)
+    presentation_array = np.array(presentation_array)
+
+    return presentation_array
+
+def getRepFRRepeatArray(session_name_array,list_num_key,session_events):
+    # for RepFR create an array of whether word presentations are 1p (presented only once, 2p, or 3p
+
+    session_names = np.unique(session_name_array)
+    repeat_array = []
+
+    for sess in session_names:
+        sess_list_nums = np.unique(list_num_key[session_name_array==sess])
+
+        for ln in sess_list_nums:
+            # for each list in each session, figure out which encoding events are 1p/2p/3p
+            list_item_nums = session_events[((session_name_array==sess) & (list_num_key==ln))].item_num # note this is for *every* electrode
+
+            if len(list_item_nums) % 27 == 0: # make sure all the words were presented for this list
+                unique_item_nums,item_counts = np.unique(list_item_nums,return_counts=True)
+                pres_nums = item_counts/(sum(item_counts)/27) # this divides by number of electrodes to get back to 1p/2p/3p instead of multiples of it
+                list_pres_nums = []
+                for item_num in list_item_nums:
+                    list_pres_nums.append(int(pres_nums[findInd(unique_item_nums==item_num)]))
+            else:
+                # I ran this for patients up until 2021-10-27 and only R1579T-1, list_num=16 had this issue (it's accounted for in updated_recalls)
+                print('ONE OF YOUR LISTS DID NOT HAVE 27 WORDS!!!')
+                print(sess)
+                print(ln)
+            repeat_array.extend(list_pres_nums)
+    repeat_array = np.array(repeat_array)
+
+    return repeat_array
+
 def bootPSTH(point_array,binsize,smoothing_triangle,sr,start_offset): # same as above, but single output so can bootstrap
     # point_array is binary point time (spikes or SWRs) v. trial
     # binsize in ms, smoothing_triangle is how many points in triangle kernel moving average
