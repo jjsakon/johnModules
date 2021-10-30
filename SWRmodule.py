@@ -1637,8 +1637,11 @@ def MakeLocationFilter(scheme, location):
     return [location in s for s in [s if s else '' for s in scheme.iloc()[:]['ind.region']]]
 
 def getElectrodeRanges(elec_regions,exp,sub,session,mont):
-    # remove bad range of electrodes (high noise) that I found by manually looking through data (raster in particular)
+    # remove bad range of electrodes (high noise or repetitive channels) that I found by manually looking through raster plots.
     # note that each of these subs/sessions should be documented in a pairs of ppts in the FR1/catFR1 cleaning folders on box
+    # Oftentimes if there are 3 pairs in a row that were all in HPC, I'll remove the middle one since it has some redundant signals 
+    # with each of other two
+    # 2021-10-28 adding in repFR
     electrode_search_range = range(len(elec_regions))
     if exp == 'FR1':
         if sub == 'R1120E':
@@ -1695,9 +1698,13 @@ def getElectrodeRanges(elec_regions,exp,sub,session,mont):
             electrode_search_range = [i for i in range(len(elec_regions)) if i != 60] # parahippocampal...3rd of 4 consecutive channels
         elif sub == 'R1527J':
             electrode_search_range = [i for i in range(len(elec_regions)) if i != 156] # consecutive channels with repeated signal
+    elif exp == 'RepFR1':
+        if sub == 'R1528E':
+            electrode_search_range = [i for i in range(len(elec_regions)) if i != 154]
+            electrode_search_range.remove(15) 
     return electrode_search_range
 
-def ClusterRun(function, parameter_list, max_cores=200):
+def ClusterRun(function, parameter_list, max_cores=210):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -1727,7 +1734,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=4, cores_per_job=50, \
+        num_jobs=7, cores_per_job=30, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
