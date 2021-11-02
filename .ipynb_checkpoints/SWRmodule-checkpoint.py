@@ -1423,7 +1423,7 @@ def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,sub_forgot
     return bin_model
 
 def getCategoryRepeatIndicator(sess,electrode_array,session_name_array,category_array):
-    # get an array indicating if each word is from the 1st, 2nd, or 3rd use of a given category
+    # get an array indicating if each word is from the 1st, 2nd, or 3rd use of a given category in a session
     
     first_elec = np.unique(electrode_array[session_name_array == sess])[0] # just take 1st electrode since it's the same categories for each
     elec_category_array = category_array[( (session_name_array == sess) & (electrode_array == first_elec) )]
