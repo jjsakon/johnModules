@@ -12,6 +12,9 @@ in SWRmodule.
 2021-10-06 JS adding a general temporal lobe labels
 '''
 
+
+## Stein/Das labels
+
 MTL_stein = ['left ca1','left ca2','left ca3','left dg','left sub','left prc','left ec','left phc','left mtl wm',
              'right ca1','right ca2','right ca3','right dg','right sub','right prc','right ec','right phc','right mtl wm',
              'left amy','right amy'] # including amygdala in MTL
@@ -24,6 +27,7 @@ parietal_stein = ['left supramarginal gyrus','right supramarginal gyrus']
 other_TL_stein = ['left fusiform gyrus wm'] # actually from Das. ba36 is part of fusiform
 other_stein = ['left precentral gyrus','none','right insula','right precentral gyrus','nan','misc']
 
+
 # Using Desikan Neuroimage (2016), the ind localizations come from automated segmentation
 # I'm also adding in dk and wb to these, since for some reason those are used for some electrode regions
 # -dk comes from the same DesikanKilliany(2006) paper
@@ -31,6 +35,8 @@ other_stein = ['left precentral gyrus','none','right insula','right precentral g
 # https://www.slicer.org/wiki/Documentation/4.1/SlicerApplication/LookupTables/Freesurfer_labels
 # although Sandy Das pointed to http://www.neuromorphometrics.com/2012_MICCAI_Challenge_Data.html
 # 2020-08-17 updated these with new values from loading wb and MTL fields in localization.json pairs
+# see https://memory-int.psych.upenn.edu/InternalWiki/index.php/RAM_data for details
+
 MTL_ind = ['parahippocampal','entorhinal','temporalpole',   
            ' left amygdala',' left ent entorhinal area',' left hippocampus',' left phg parahippocampal gyrus',' left tmp temporal pole', # whole-brain names
            ' right amygdala',' right ent entorhinal area',' right hippocampus',' right phg parahippocampal gyrus',' right tmp temporal pole',
@@ -45,7 +51,7 @@ LTC_ind = ['bankssts','middletemporal','inferiortemporal','superiortemporal', # 
            ' right itg inferior temporal gyrus',' right mtg middle temporal gyrus',' right stg superior temporal gyrus']
            # leaving out 'left/right ttg transverse temporal gyrus' and 'transversetemporal'
            
-# havne't below yet with new values from localization.json (the wb ones)
+# localization.json (the wb ones) including TTG
 PFC_ind = ['caudalmiddlefrontal','frontalpole','lateralorbitofrontal','medialorbitofrontal','parsopercularis',
           'parsorbitalis','parstriangularis','rostralmiddlefrontal','superiorfrontal']
 cingulate_ind = ['caudalanteriorcingulate','isthmuscingulate','posteriorcingulate','rostralanteriorcingulate']
@@ -56,6 +62,9 @@ other_ind = ['insula','none','precentral','paracentral','right inf lat vent','le
             'left cerebral white matter','right cerebral white matter', # these wb labels can be anywhere in hemisphere so just put in other
              'nan','left lateral ventricle','right lateral ventricle']
 
+
+## Combine across atlases
+
 MTL_labels = MTL_stein+MTL_ind
 LTC_labels = LTC_stein+LTC_ind
 PFC_labels = PFC_stein+PFC_ind
@@ -64,7 +73,26 @@ OTHER_labels = cingulate_stein+parietal_stein+other_TL_stein+other_stein+ \
 ALL_labels = MTL_labels+LTC_labels+PFC_labels+OTHER_labels
 
 
-# I want to select all regions in temporal lobe 2021-10-06
+## Want to create an MFG, IFG, and non-HPC MTL for Ezzyat math paper (HPC is already done below)
+MFG_labels = ['left mfg middle frontal gyrus',' left mfg middle frontal gyrus',
+              'right mfg middle frontal gyrus',' right mfg middle frontal gyrus']
+IFG_labels = ['left opifg opercular part of the inferior frontal gyrus',' left opifg opercular part of the inferior frontal gyrus',
+              'left orifg orbital part of the inferior frontal gyrus', ' left orifg orbital part of the inferior frontal gyrus',
+              'left trifg triangular part of the inferior frontal gyrus',' left trifg triangular part of the inferior frontal gyrus',
+              'left opifg opercular part of the inferior frontal gyrus',' left opifg opercular part of the inferior frontal gyrus',
+              'left orifg orbital part of the inferior frontal gyrus', ' left orifg orbital part of the inferior frontal gyrus',
+              'left trifg triangular part of the inferior frontal gyrus',' left trifg triangular part of the inferior frontal gyrus']
+nonHPC_MTL_labels = [MTL_labels[i] for i in range(0,len(MTL_labels)) if i not in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]]
+# nonHPC_MTL_labels = [MTL_labels[i] for i not in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]] # all labels within MTL that aren't HPC
+
+
+## what's used in SWR retrieval paper
+HPC_labels = [MTL_labels[i] for i in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]] # all labels within HPC
+ENT_labels = [MTL_labels[i] for i in [6,15,21,24,29,34,39,47,54]] # all labels within entorhinal
+PHC_labels = [MTL_labels[i] for i in [7,16,20,26,31,36,41,48,55]] # all labels within parahippocampal
+
+
+# I want to select all regions in temporal lobe to create a ripple video 2021-10-06
 temporal_lobe_labels = MTL_labels+LTC_labels+other_TL_stein+other_TL_ind
 extra_TL = [' left fug fusiform gyrus',' right fug fusiform gyrus','left fug fusiform gyrus','right fug fusiform gyrus',
           ' left pp planum polare',' right pp planum polare','left pp planum polare','right pp planum polare',

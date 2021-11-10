@@ -145,12 +145,12 @@ def normFFT(eeg):
     fft_eeg = 1/N*np.abs(fft(eeg)[:N//2]) # should really normalize by Time/sample rate (e.g. 4 s of eeg/500 hz sampling=8)
     return fft_eeg
 
-def getMTLregions(MTL_labels):
-    # see brain_labels.py for MTL_labels
-    HPC_labels = [MTL_labels[i] for i in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]] # all labels within HPC
-    ENT_labels = [MTL_labels[i] for i in [6,15,21,24,29,34,39,47,54]] # all labels within entorhinal
-    PHC_labels = [MTL_labels[i] for i in [7,16,20,26,31,36,41,48,55]] # all labels within parahippocampal
-    return HPC_labels,ENT_labels,PHC_labels    
+# def getMTLregions(MTL_labels):
+#     # see brain_labels.py for MTL_labels
+#     HPC_labels = [MTL_labels[i] for i in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]] # all labels within HPC
+#     ENT_labels = [MTL_labels[i] for i in [6,15,21,24,29,34,39,47,54]] # all labels within entorhinal
+#     PHC_labels = [MTL_labels[i] for i in [7,16,20,26,31,36,41,48,55]] # all labels within parahippocampal
+#     return HPC_labels,ENT_labels,PHC_labels    
 
 def getSWRpathInfo(remove_soz_ictal,recall_type_switch,selected_period,recall_minimum):
     # get strings for path name for save and loading cluster data
@@ -1704,7 +1704,7 @@ def getElectrodeRanges(elec_regions,exp,sub,session,mont):
             electrode_search_range.remove(15) 
     return electrode_search_range
 
-def ClusterRun(function, parameter_list, max_cores=210):
+def ClusterRun(function, parameter_list, max_cores=100):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -1734,7 +1734,7 @@ def ClusterRun(function, parameter_list, max_cores=210):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=7, cores_per_job=30, \
+        num_jobs=20, cores_per_job=5, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
