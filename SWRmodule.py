@@ -1704,44 +1704,101 @@ def getElectrodeRanges(elec_regions,exp,sub,session,mont):
             electrode_search_range.remove(15) 
     return electrode_search_range
 
-def ClusterRun(function, parameter_list, max_cores=100):
-    '''function: The routine run in parallel, which must contain all necessary
-       imports internally.
+def lmax(x,filt):
+    # translated from Matlab by J. Sakon 2021-11-16
+    '''Find local maxima in vector X,where
+%	LMVAL is the output vector with maxima values, INDD  is the 
+%	corresponding indexes, FILT is the number of passes of the small
+%	running average filter in order to get rid of small peaks.  Default
+%	value FILT =0 (no filtering). FILT in the range from 1 to 3 is 
+%	usially sufficient to remove most of a small peaks
+%	For example:
+%	xx=0:0.01:35; y=sin(xx) + cos(xx ./3); 
+%	plot(xx,y); grid; hold on;
+%	[b,a]=lmax(y,2)
+%	 plot(xx(a),y(a),'r+')
+%	see also LMIN '''
     
-       parameter_list: should be an iterable of elements, for which each element
-       will be passed as the parameter to function for each parallel execution.
-       
-       max_cores: Standard Rhino cluster etiquette is to stay within 100 cores
-       at a time.  Please ask for permission before using more.
-       
-       In jupyterlab, the number of engines reported as initially running may
-       be smaller than the number actually running.  Check usage from an ssh
-       terminal using:  qstat -f | egrep "$USER|node" | less
-       
-       Undesired running jobs can be killed by reading the JOBID at the left
-       of that qstat command, then doing:  qdel JOBID
-    '''
-    import cluster_helper.cluster
-    from pathlib import Path
+    x_orig = copy(x)
+    num_pts = len(x)
+    fltr = np.array([1, 1, 1])/3
+    x1 = x[0]
+    x2 = x[-1]
+    for jj in range(filt):
+        c = np.convolve(fltr,x)
+        x = c[1:num_pts+2]
+        x[0] = x1
+        x[-1] = x2
 
-    num_cores = len(parameter_list)
-    num_cores = min(num_cores, max_cores)
+    lmval = []; indd = []
+    i=1 # start at 2nd point
+    while i < num_pts-1:
+        if x[i] > x[i-1]:
+            if x[i] > x[i+1]:
+                lmval.append(x[i])
+                indd.append(i)
+            elif ( (x[i] == x[i+1]) & (x[i]==x[i+2]) ):
+                i = i+2 # skip 2 points
+            elif x[i] == x[i+1]:
+                i = i+1 # skip 1 point
+        i = i+1
+    if ( (filt > 0) & (len(indd)>0 ) ):
+        if ( (indd[0] <= 3) | ((indd[-1]+2) > num_pts) ):
+            rng = 1
+        else:
+            rng = 2
+        temp_val = []
+        temp_ind = []
+        for ii in range(len(indd)):
+            temp_val.append(np.max(x_orig[indd[ii]-rng:indd[ii]+rng]))
+            max_idx = np.argmax(x_orig[indd[ii]-rng:indd[ii]+rng])
+            temp_ind.append(indd[ii]+max_idx-rng-1)  
+        lmval = temp_val
+        indd = temp_ind
 
-    myhomedir = str(Path.home())
-    # can add in 'mem':Num where Num is # of GB to allow for memory into extra_params
-    #...Nora said it doesn't work tho and no sign it does
-    # can also try increasing cores_per_job to >1, but should also reduce num_jobs to not hog
-    # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
-    # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
-    with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=20, cores_per_job=5, \
-        extra_params={'resources':'pename=python-round-robin'}, \
-        profile=myhomedir + '/.ipython/') \
-        as view:
-        # 'map' applies a function to each value within an interable
-        res = view.map(function, parameter_list)
-        
-    return res
+    return lmval,indd
+
+def lmin(x,filt):
+    # translated from Matlab by J. Sakon 2021-11-16. See lmax above for description
+    
+    x_orig = copy(x)
+    num_pts = len(x)
+    fltr = np.array([1, 1, 1])/3
+    x1 = x[0]
+    x2 = x[-1]
+    for jj in range(filt):
+        c = np.convolve(fltr,x)
+        x = c[1:num_pts+2]
+        x[0] = x1
+        x[-1] = x2
+
+    lmval = []; indd = []
+    i=1 # start at 2nd point
+    while i < num_pts-1:
+        if x[i] < x[i-1]:
+            if x[i] < x[i+1]:
+                lmval.append(x[i])
+                indd.append(i)
+            elif ( (x[i] == x[i+1]) & (x[i]==x[i+2]) ):
+                i = i+2 # skip 2 points
+            elif x[i] == x[i+1]:
+                i = i+1 # skip 1 point
+        i = i+1
+    if ( (filt > 0) & (len(indd)>0 ) ):
+        if ( (indd[0] <= 3) | ((indd[-1]+2) > num_pts) ):
+            rng = 1
+        else:
+            rng = 2
+        temp_val = []
+        temp_ind = []
+        for ii in range(len(indd)):
+            temp_val.append(np.min(x_orig[indd[ii]-rng:indd[ii]+rng]))
+            max_idx = np.argmin(x_orig[indd[ii]-rng:indd[ii]+rng])
+            temp_ind.append(indd[ii]+max_idx-rng-1)  
+        lmval = temp_val
+        indd = temp_ind
+
+    return lmval,indd
 
 class SubjectStats():
     def __init__(self):
@@ -1822,4 +1879,44 @@ def SubjectStatTable(subjects):
         print (table)
         raise
     
-    return table    
+    return table  
+
+def ClusterRun(function, parameter_list, max_cores=250):
+    '''function: The routine run in parallel, which must contain all necessary
+       imports internally.
+    
+       parameter_list: should be an iterable of elements, for which each element
+       will be passed as the parameter to function for each parallel execution.
+       
+       max_cores: Standard Rhino cluster etiquette is to stay within 100 cores
+       at a time.  Please ask for permission before using more.
+       
+       In jupyterlab, the number of engines reported as initially running may
+       be smaller than the number actually running.  Check usage from an ssh
+       terminal using:  qstat -f | egrep "$USER|node" | less
+       
+       Undesired running jobs can be killed by reading the JOBID at the left
+       of that qstat command, then doing:  qdel JOBID
+    '''
+    import cluster_helper.cluster
+    from pathlib import Path
+
+    num_cores = len(parameter_list)
+    num_cores = min(num_cores, max_cores)
+
+    myhomedir = str(Path.home())
+    # can add in 'mem':Num where Num is # of GB to allow for memory into extra_params
+    #...Nora said it doesn't work tho and no sign it does
+    # can also try increasing cores_per_job to >1, but should also reduce num_jobs to not hog
+    # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
+    # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
+    with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
+        num_jobs=25, cores_per_job=10, \
+        extra_params={'resources':'pename=python-round-robin'}, \
+        profile=myhomedir + '/.ipython/') \
+        as view:
+        # 'map' applies a function to each value within an interable
+        res = view.map(function, parameter_list)
+        
+    return res
+  
