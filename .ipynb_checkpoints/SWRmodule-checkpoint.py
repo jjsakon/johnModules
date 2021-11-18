@@ -1150,6 +1150,42 @@ def detectRipplesButter(eeg_rip,eeg_ied,eeg_mne,sr): #,mstimes):
     
     return ripplelogic,iedlogic #,ripple_mstimes
 
+def detectRipplesStaresina(eeg_rip,sr):
+    # detect ripples using Staresina et al 2015 NatNeuro algo
+    window_size = 20 # in ms
+    min_duration = 38 # 38 ms
+
+    sr_factor = 1000/sr
+
+    rip2 = np.power(eeg_rip,2)
+    window = np.ones(int(window_size/sr_factor))/float(window_size/sr_factor)
+    rms_values = []
+    # get rms for 20 ms moving avg across all trials (confirmed this conv method is same as moving window)
+    for eeg_tr in rip2:
+        # from https://stackoverflow.com/questions/8245687/numpy-root-mean-squared-rms-smoothing-of-a-signal
+        rms_values.append(np.sqrt(np.convolve(eeg_tr, window, 'same'))) # same means it pads at ends, but doesn't matter with buffers anyway
+    rms_thresh = np.percentile(rms_values,99) # 99th %ile threshold
+    binary_array = rms_values>=rms_thresh 
+
+    # now find those with minimum duration between start/end for each trial and if they have 3 peaks/troughs keep them
+
+    ripplelogic = np.zeros((np.shape(binary_array)[0],np.shape(binary_array)[1]))
+    for i_trial in range(len(binary_array)):
+        binary_trial = binary_array[i_trial]
+        starts,ends = getLogicalChunks(binary_trial)
+        candidate_events = (np.array(ends)-np.array(starts)+1)>=(min_duration/sr_factor)
+        starts = np.array(starts)[candidate_events]
+        ends = np.array(ends)[candidate_events]
+        ripple_trial = np.zeros(len(binary_trial))
+        for i_cand in range(len(starts)):
+            # get raw eeg plus half of moving window. idx shouldn't get past end since ripplelogic is smaller than eeg_rip
+            eeg_segment = eeg_rip[i_trial].values[int(starts[i_cand]+window_size/sr_factor/2-1):int(ends[i_cand]+window_size/sr_factor/2+1)] # add point on either side for 3 MA filter 
+            peaks,_ = lmax(eeg_segment,3) # Matlab function suggested by Bernhard I rewrote for Python. Basically a moving average 3 filter to find local maxes
+            troughs,_ = lmin(eeg_segment,3)
+            if ((len(peaks)>=3) | (len(troughs)>=3)):
+                ripplelogic[i_trial,starts[i_cand]:ends[i_cand]] = 1
+    return ripplelogic
+
 def downsampleBinary(array,factor):
     # input should be trial X time binary matrix
     array_save = np.array([])
@@ -1911,7 +1947,7 @@ def ClusterRun(function, parameter_list, max_cores=250):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=25, cores_per_job=10, \
+        num_jobs=15, cores_per_job=10, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
