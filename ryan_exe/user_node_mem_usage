@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for user in $(ps auwfx | awk '{print $1; }' | sort | uniq | grep -v USER)
+do
+  echo "$(ps auwfx | awk '{print $1" "$6;}' |
+    grep "$user" | awk '{print $2}' | paste -sd+ | bc) to $(ps auwfx |
+    awk '{print $1" "$5;}' | grep "$user" | awk '{print $2}' | paste -sd+ |
+    bc) $user"
+done
+

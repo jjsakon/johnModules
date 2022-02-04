@@ -1,0 +1,34 @@
+#!/bin/bash
+
+TESTDIR="$HOME/.testqsub"
+mkdir -p "$TESTDIR"
+cd "$TESTDIR"
+
+export OUTFILE="$TESTDIR/testqsub.txt"
+
+rm -f "$TESTDIR/"STDIN.e*
+rm -f "$TESTDIR/"STDIN.o*
+rm -f "$OUTFILE"
+
+JOBSTART="$(date)"
+RES=$(echo "/bin/bash -c \"echo \$(date) >'$OUTFILE'\"" | qsub -cwd)
+if [ "$?" == "0" ]
+then
+  watch -cn1 "
+    echo \"Output in $TESTDIR\";
+    echo
+    echo \"$RES\";
+    echo;
+    echo 'Job started:  '$JOBSTART;
+    if [ -e \"$OUTFILE\" ];
+    then
+      echo -en '\033[34;40;1mJob ran at:   ';
+      cat \"$OUTFILE\";
+      echo -en '\033[0m';
+    else
+      echo -e '\033[34;40;1mPending result...\033[0m';
+    fi;
+    echo;
+    qstat"
+fi
+

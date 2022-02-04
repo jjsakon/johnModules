@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Note, terminate jobs with: qdel JOBID
+
+TRUNCUSER="${USER:0:10}"
+qstat -f | egrep "$TRUNCUSER|node|PENDING" | less
+

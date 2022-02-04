@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Note, terminate jobs with: qdel JOBID
+
+# Note, default qstat for login is:  alias qstat='qstat -u "*"'
+
+qstat -u "*" -f | grep -v -- "------------------------------" |
+  grep -v "resv/used/tot" | less
+
+

@@ -1,0 +1,24 @@
+#!/bin/bash
+
+TARGET="$1"
+
+if [ "$TARGET" == "" ]
+then
+  TARGET="bcbio-e"
+fi
+
+TARGET="${TARGET:0:10}"
+
+
+JOBLIST="$(qstat -f | grep "$USER" | grep "$TARGET" | awk '{print $1;}' | sort -n | uniq)"
+
+if [ "$JOBLIST" == "" ]
+then
+  echo "No jobs running."
+  exit
+fi
+
+echo "Killing:  $JOBLIST"
+
+qdel $JOBLIST
+

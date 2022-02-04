@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+import sys
+
+if len(sys.argv) < 3:
+  print(sys.argv[0], '<filename.pdf> "String to encode"')
+  print('Requires:  pip install qrcodegen cairosvg')
+  sys.exit(-1)
+
+import qrcodegen
+import cairosvg
+
+pdfout = sys.argv[1]
+to_encode = ' '.join(sys.argv[2:])
+
+def to_svg_str(qr: qrcodegen.QrCode, border: int) -> str:
+  """Returns a string of SVG code for an image depicting the given QR Code, with the given number
+  of border modules. The string always uses Unix newlines (\n), regardless of the platform."""
+  if border < 0:
+    raise ValueError("Border must be non-negative")
+  parts: List[str] = []
+  for y in range(qr.get_size()):
+    for x in range(qr.get_size()):
+      if qr.get_module(x, y):
+        parts.append("M{},{}h1v1h-1z".format(x + border, y + border))
+  return """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 {0} {0}" stroke="none">
+  <rect width="100%" height="100%" fill="#FFFFFF"/>
+  <path d="{1}" fill="#000000"/>
+</svg>
+""".format(qr.get_size() + border * 2, " ".join(parts))
+
+qr = qrcodegen.QrCode.encode_text(to_encode, qrcodegen.QrCode.Ecc.LOW)
+svgstr = to_svg_str(qr, 1)
+
+#with open(svgout, 'w') as fw:
+#  fw.write(svgstr)
+
+cairosvg.svg2pdf(svgstr, dpi=12, write_to=pdfout)
+

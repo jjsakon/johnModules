@@ -649,6 +649,7 @@ def get_elec_regions(localizations,pairs):
     # 2020-08-26 previous version input tal_struct (pairs.json as a recArray). Now input pairs.json and localizations.json like this:
     # pairs = reader.load('pairs')
     # localizations = reader.load('localization')
+    # read about details here: https://memory-int.psych.upenn.edu/InternalWiki/index.php/RAM_data
     
     regs = []    
     atlas_type = []
@@ -961,13 +962,14 @@ def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
     # get the bad channels and soz/ictal/lesion channels from electrode_categories.txt files
     
     # 2021-03-15 rewriting this to put 0 for good electrode, 1 for SOZ, and 2 for bad_electrodes (bad leads or the like)
+    # 2022-02-04 this makes more sense to use remove_soz_ictal with 1 for bad_electrodes or SOZ
     
     bad_bp_mask = np.zeros(len(tal_struct))
     if elecs_cat != []:
 
         bad_elecs = elecs_cat['bad_channel']
         soz_elecs = elecs_cat['soz'] # + elecs_cat['interictal'] only removing SOZ 2021-03-15
-        
+
         for idx,tal_row in enumerate(tal_struct):
             elec_labels = tal_row['tagName'].split('-')
             # if there are dashes in the monopolar elec names, need to fix that
@@ -976,9 +978,10 @@ def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
                 elec_labels = ['-'.join(elec_labels[0:n2]), '-'.join(elec_labels[n2:])]
 
             if elec_labels[0] in bad_elecs or elec_labels[1] in bad_elecs:
-                bad_bp_mask[idx] = 2 # 2 for bad elecs/bad leads
+                bad_bp_mask[idx] = 1 # 2 for bad elecs/bad leads
             if elec_labels[0] in soz_elecs or elec_labels[1] in soz_elecs:
-                bad_bp_mask[idx] = 1
+                if remove_soz_ictal == True:
+                    bad_bp_mask[idx] = 1 # otherwise just leave as 0
             
     return bad_bp_mask
 
@@ -1535,6 +1538,10 @@ def getRepFRPresentationArray(session_name_array,list_num_key,session_events):
 
 def getRepFRRepeatArray(session_name_array,list_num_key,session_events):
     # for RepFR create an array of whether word presentations are 1p (presented only once, 2p, or 3p
+    
+    # cannot use session_events.repeats because I have rejiggered the indices 
+    # (those are saved electrode->list while I'm loading all these arrays as sub_sess->ln. 
+    # So get repeat_array via sub_sess->ln so it matches
 
     session_names = np.unique(session_name_array)
     repeat_array = []
@@ -1917,7 +1924,7 @@ def SubjectStatTable(subjects):
     
     return table  
 
-def ClusterRun(function, parameter_list, max_cores=250):
+def ClusterRun(function, parameter_list, max_cores=200):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -1947,7 +1954,7 @@ def ClusterRun(function, parameter_list, max_cores=250):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=15, cores_per_job=10, \
+        num_jobs=2, cores_per_job=40, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
@@ -1956,3 +1963,4 @@ def ClusterRun(function, parameter_list, max_cores=250):
         
     return res
   
+# cores_per_job is enough for catFR1 SWRclustering. 7 missed 5-10

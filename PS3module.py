@@ -783,7 +783,7 @@ def ClusterRun(function, parameter_list, max_cores=100):
     myhomedir = str(Path.home())
 
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=num_cores, cores_per_job=1, \
+        num_jobs=3, cores_per_job=30, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
