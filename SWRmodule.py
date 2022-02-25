@@ -1291,6 +1291,7 @@ def binBinaryArray(start_array,bin_size,sr_factor):
     bin_to_hz = 1000/bin_size*bin_in_sr # factor that converts binned matrix to Hz
     
     binned_array = [] # note this will be at instantaeous rate bin_in_sr multiple lower (e.g. 100 ms bin/2 sr = 50x)
+
     for row in start_array:
         temp_row = []
         for time_bin in bins:
@@ -1356,7 +1357,7 @@ def getMixedEffectCIs(binned_start_array,subject_name_array,session_name_array):
         # now get the CIs JUST for this time bin
         vc = {'session':'0+session'}
         get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", CI_df, groups="subject", vc_formula=vc)
-        bin_model = get_bin_CI_model.fit(reml=False, method='nm')
+        bin_model = get_bin_CI_model.fit(reml=False, method='nm',maxiter=2000)
         mean_values.append(bin_model.params.Intercept)
         CIs = superVstack(CIs,bin_model.conf_int().iloc[0].values)
     # get CI distances at each bin by subtracting from means
@@ -1380,7 +1381,7 @@ def getMixedEffectSEs(binned_start_array,subject_name_array,session_name_array):
         # now get the CIs JUST for this time bin
         vc = {'session':'0+session'}
         get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", CI_df, groups="subject", vc_formula=vc)
-        bin_model = get_bin_CI_model.fit(reml=True, method='nm')
+        bin_model = get_bin_CI_model.fit(reml=True, method='nm',maxiter=2000)
         mean_values.append(bin_model.params.Intercept)
 #         CIs = superVstack(CIs,bin_model.conf_int().iloc[0].values)
         # instead of CIs (which are rather conservative and wide) let's use SEs
@@ -1427,7 +1428,7 @@ def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
     # note, even if there's only one subject being used here, as I do for the t-score histograms
     # this format will still use sessions as random grouping (in other words, same as if I used
     # "session" instead of "subject" below for a single patient)
-    sig_bin_model = smf.mixedlm("ripple_rates ~ bin", bin_df, groups="subject", vc_formula=vc)
+    sig_bin_model = smf.mixedlm("ripple_rates ~ bin", bin_df, groups="subject", vc_formula=vc, re_formula="bin")
     bin_model = sig_bin_model.fit(reml=True, method='nm',maxiter=2000)
     return bin_model
 
@@ -1457,8 +1458,8 @@ def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,sub_forgot
     bin_df = pd.DataFrame(data={'session':session_name,'subject':subject_name,
                                'category':category_label,'ripple_rates':ripple_rates})
     vc = {'session':'0+session'}
-    sig_bin_model = smf.mixedlm("ripple_rates ~ category", bin_df, groups="subject", vc_formula=vc)
-    bin_model = sig_bin_model.fit(reml=False, method='nm')
+    sig_bin_model = smf.mixedlm("ripple_rates ~ category", bin_df, groups="subject", vc_formula=vc, re_formula="category")
+    bin_model = sig_bin_model.fit(reml=True, method='nm',maxiter=2000)
     return bin_model
 
 def getCategoryRepeatIndicator(sess,electrode_array,session_name_array,category_array):
@@ -1954,7 +1955,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=2, cores_per_job=40, \
+        num_jobs=8, cores_per_job=10, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
@@ -1963,4 +1964,4 @@ def ClusterRun(function, parameter_list, max_cores=200):
         
     return res
   
-# cores_per_job is enough for catFR1 SWRclustering. 7 missed 5-10
+# 20 cores_per_job is enough for catFR1 SWRclustering. 7 missed 5-10
