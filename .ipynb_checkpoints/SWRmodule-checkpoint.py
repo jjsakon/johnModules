@@ -1955,7 +1955,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=8, cores_per_job=10, \
+        num_jobs=7, cores_per_job=10, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
@@ -1965,3 +1965,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     return res
   
 # 20 cores_per_job is enough for catFR1 SWRclustering. 7 missed 5-10
+# AMY encoding and surrounding_recall no issues with 10 cores/job
+# 10 works for ENTPHC with encoding
+# 10 works for all surrounding_recall regardless of region (with HFA too)
+# 30 works for most of FR1 encoding...rerunning now with 40
