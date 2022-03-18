@@ -1015,7 +1015,7 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     ripple_max = 250/sr_factor #200/sr_factor
     min_separation = 30/sr_factor # peak to peak
     orig_eeg_rip = copy(eeg_rip)
-    clip_SD = 4*np.std(eeg_rip)
+    clip_SD = np.mean(eeg_rip)+4*np.std(eeg_rip)
     eeg_rip[eeg_rip>clip_SD] = clip_SD # clip at 4SD
     eeg_rip = eeg_rip**2 # square
     
@@ -1287,8 +1287,13 @@ def fullPSTH(point_array,binsize,smoothing_triangle,sr,start_offset):
 def binBinaryArray(start_array,bin_size,sr_factor):
     # instead of PSTH, get a binned binary array that keeps the trials but bins over time
     bin_in_sr = bin_size/sr_factor
-    bins = np.arange(0,start_array.shape[1],bin_in_sr) #start_array.shape[1]/bin_size*sr_factor    
-    bin_to_hz = 1000/bin_size*bin_in_sr # factor that converts binned matrix to Hz
+    bins = np.arange(0,start_array.shape[1],bin_in_sr) #start_array.shape[1]/bin_size*sr_factor
+    
+    # only need to do this for ripples (where bin_size is 100s of ms). For z-scores (which is already averaged) don't convert
+    if bin_size > 50:
+        bin_to_hz = 1000/bin_size*bin_in_sr # factor that converts binned matrix to Hz
+    else:
+        bin_to_hz = 1
     
     binned_array = [] # note this will be at instantaeous rate bin_in_sr multiple lower (e.g. 100 ms bin/2 sr = 50x)
 
@@ -1955,7 +1960,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=7, cores_per_job=10, \
+        num_jobs=2, cores_per_job=50, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
@@ -1968,4 +1973,6 @@ def ClusterRun(function, parameter_list, max_cores=200):
 # AMY encoding and surrounding_recall no issues with 10 cores/job
 # 10 works for ENTPHC with encoding
 # 10 works for all surrounding_recall regardless of region (with HFA too)
-# 30 works for most of FR1 encoding...rerunning now with 40
+# 30 works for most of FR1 encoding...40 works for all
+# 25 didn't work for a few...made a list of the 15 or so in SWRanalysis 2022-03-09
+# 25 didn't work for a few catFR1 too. Made list of 20 and will try running with 50 cores/job
