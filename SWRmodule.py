@@ -1015,8 +1015,8 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     ripple_max = 250/sr_factor #200/sr_factor
     min_separation = 30/sr_factor # peak to peak
     orig_eeg_rip = copy(eeg_rip)
-    clip_SD = np.mean(eeg_rip)+4*np.std(eeg_rip)
-    eeg_rip[eeg_rip>clip_SD] = clip_SD # clip at 4SD
+    clip_SD = np.mean(eeg_rip)+3*np.std(eeg_rip)
+    eeg_rip[eeg_rip>clip_SD] = clip_SD # clip at 3SD since detecting at 3 SD now
     eeg_rip = eeg_rip**2 # square
     
     # FIR lowpass 40 hz filter for Norman dtection algo
@@ -1030,7 +1030,7 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     
     # now, find candidate events (>mean+4SD) 
     orig_eeg_rip = orig_eeg_rip**2
-    candidate_thresh = mean_detection_thresh+4*std_detection_thresh
+    candidate_thresh = mean_detection_thresh+3*std_detection_thresh
     expansion_thresh = mean_detection_thresh+2*std_detection_thresh
     ripplelogic = orig_eeg_rip >= candidate_thresh
     # remove IEDs detected from Norman 25-60 algo...maybe should do this after expansion to 2SD??
@@ -1960,7 +1960,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=2, cores_per_job=50, \
+        num_jobs=5, cores_per_job=40, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
