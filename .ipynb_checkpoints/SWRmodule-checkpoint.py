@@ -1016,7 +1016,7 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     min_separation = 30/sr_factor # peak to peak
     orig_eeg_rip = copy(eeg_rip)
     clip_SD = np.mean(eeg_rip)+3*np.std(eeg_rip)
-    eeg_rip[eeg_rip>clip_SD] = clip_SD # clip at 4SD
+    eeg_rip[eeg_rip>clip_SD] = clip_SD # clip at 3SD since detecting at 3 SD now
     eeg_rip = eeg_rip**2 # square
     
     # FIR lowpass 40 hz filter for Norman dtection algo
@@ -1433,7 +1433,7 @@ def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
     # note, even if there's only one subject being used here, as I do for the t-score histograms
     # this format will still use sessions as random grouping (in other words, same as if I used
     # "session" instead of "subject" below for a single patient)
-    sig_bin_model = smf.mixedlm("ripple_rates ~ bin", bin_df, groups="subject", vc_formula=vc, re_formula="bin")
+    sig_bin_model = smf.mixedlm("ripple_rates ~ bin", bin_df, groups="subject", vc_formula=vc) #, re_formula="bin") # adding this really screwed up the model even though it claims it converged...since it's only two bins the intercept must mess thigns up 2022-05-02
     bin_model = sig_bin_model.fit(reml=True, method='nm',maxiter=2000)
     return bin_model
 
@@ -1463,7 +1463,7 @@ def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,sub_forgot
     bin_df = pd.DataFrame(data={'session':session_name,'subject':subject_name,
                                'category':category_label,'ripple_rates':ripple_rates})
     vc = {'session':'0+session'}
-    sig_bin_model = smf.mixedlm("ripple_rates ~ category", bin_df, groups="subject", vc_formula=vc, re_formula="category")
+    sig_bin_model = smf.mixedlm("ripple_rates ~ category", bin_df, groups="subject", vc_formula=vc) #, re_formula="category")
     bin_model = sig_bin_model.fit(reml=True, method='nm',maxiter=2000)
     return bin_model
 
@@ -1960,7 +1960,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=5, cores_per_job=40, \
+        num_jobs=20, cores_per_job=20, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
