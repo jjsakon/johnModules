@@ -18,7 +18,7 @@ from general import *
 # comes from np.unique(sub_names) after loading all HPC recall data from exp_df.
 # NOTE: DON'T ALTER THESE since the 40/60 split is based on these names and order...
 #       ...but to get the number of subject names be sure to do len(sub_names) after loading cluster data
-total_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
+original_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
        'R1022J', 'R1027J', 'R1032D', 'R1033D', 'R1034D', 'R1035M',
        'R1044J', 'R1045E', 'R1048E', 'R1049J', 'R1052E', 'R1054J',
        'R1056M', 'R1059J', 'R1061T', 'R1063C', 'R1065J', 'R1066P',
@@ -38,7 +38,7 @@ total_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J
        'R1330D', 'R1332M', 'R1334T', 'R1336T', 'R1338T', 'R1339D',
        'R1341T', 'R1342M', 'R1346T', 'R1349T', 'R1350D', 'R1374T',
        'R1397D']
-total_sub_names_catFR1 = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R1045E',
+original_sub_names_catFR1 = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R1045E',
        'R1056M', 'R1061T', 'R1065J', 'R1066P', 'R1067P', 'R1083J',
        'R1086M', 'R1089P', 'R1092J', 'R1094T', 'R1102P', 'R1105E',
        'R1108J', 'R1112M', 'R1131M', 'R1138T', 'R1144E', 'R1147P',
@@ -60,9 +60,68 @@ total_sub_names_catFR1 = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R10
        'R1467M', 'R1468J', 'R1469D', 'R1472T', 'R1473J', 'R1476J',
        'R1477J', 'R1482J', 'R1484T', 'R1486J', 'R1487T', 'R1488T',
        'R1489E', 'R1491T', 'R1493T', 'R1496T', 'R1497T', 'R1498D',
-       'R1499T', 'R1501J', 'R1505J', 'R1515T', 'R1518T', 'R1525J',
-       'R1526J', 'R1527J', 'R1530J', 'R1532T', 'R1533J', 'R1536J'] # updated 2021-01-28 to include 7 new patients
-# unique site codes: C, D, E, J, M, N, P, T
+       'R1499T', 'R1501J', 'R1505J', 'R1515T', 'R1518T']
+## unique site codes: C, D, E, J, M, N, P, T
+
+# updated 2022-05-19 for revisions. Includes those that load for HPC SWRanalysis and SWRanalysisClustering
+updated_sub_names_catFR1 = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R1045E',
+       'R1061T', 'R1065J', 'R1066P', 'R1067P', 'R1083J', 'R1086M',
+       'R1089P', 'R1102P', 'R1105E', 'R1108J', 'R1112M', 'R1131M',
+       'R1138T', 'R1144E', 'R1147P', 'R1157C', 'R1158T', 'R1167M',
+       'R1171M', 'R1174T', 'R1176M', 'R1180C', 'R1188C', 'R1190P',
+       'R1192C', 'R1204T', 'R1207J', 'R1217T', 'R1221P', 'R1227T',
+       'R1230J', 'R1236J', 'R1239E', 'R1240T', 'R1243T', 'R1245E',
+       'R1254E', 'R1264P', 'R1269E', 'R1275D', 'R1278E', 'R1291M',
+       'R1293P', 'R1303E', 'R1310J', 'R1313J', 'R1315T', 'R1320D',
+       'R1328E', 'R1330D', 'R1332M', 'R1334T', 'R1337E', 'R1338T',
+       'R1343J', 'R1347D', 'R1348J', 'R1354E', 'R1361C', 'R1366J',
+       'R1367D', 'R1368T', 'R1372C', 'R1374T', 'R1377M', 'R1379E',
+       'R1380D', 'R1381T', 'R1382T', 'R1383J', 'R1385E', 'R1386T',
+       'R1387E', 'R1388T', 'R1393T', 'R1395M', 'R1396T', 'R1397D',
+       'R1398J', 'R1404E', 'R1405E', 'R1413D', 'R1414E', 'R1415T',
+       'R1420T', 'R1421M', 'R1422T', 'R1423E', 'R1426N', 'R1427T',
+       'R1433E', 'R1436J', 'R1443D', 'R1444D', 'R1445E', 'R1447M',
+       'R1448T', 'R1449T', 'R1450D', 'R1454M', 'R1456D', 'R1463E',
+       'R1465D', 'R1467M', 'R1468J', 'R1469D', 'R1472T', 'R1473J',
+       'R1476J', 'R1482J', 'R1484T', 'R1486J', 'R1487T', 'R1488T',
+       'R1489E', 'R1491T', 'R1493T', 'R1496T', 'R1497T', 'R1498D',
+       'R1501J', 'R1505J', 'R1515T', 'R1518T', 'R1525J',
+       'R1254E', 'R1426N', 'R1176M', 'R1398J', 'R1147P']
+# updated 2022-05-19 for revisions. Includes HPC load for both SWRanalysis and clust and ENT+PHC load for SWRanalysis
+updated_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
+       'R1022J', 'R1026D', 'R1027J', 'R1031M', 'R1032D', 'R1033D',
+       'R1034D', 'R1035M', 'R1036M', 'R1044J', 'R1048E', 'R1049J',
+       'R1052E', 'R1053M', 'R1054J', 'R1059J', 'R1061T', 'R1063C',
+       'R1065J', 'R1066P', 'R1067P', 'R1068J', 'R1070T', 'R1077T',
+       'R1080E', 'R1083J', 'R1086M', 'R1089P', 'R1092J', 'R1093J',
+       'R1094T', 'R1096E', 'R1101T', 'R1102P', 'R1105E', 'R1108J',
+       'R1112M', 'R1113T', 'R1115T', 'R1118N', 'R1120E', 'R1122E',
+       'R1123C', 'R1124J', 'R1125T', 'R1128E', 'R1131M', 'R1134T',
+       'R1136N', 'R1137E', 'R1138T', 'R1147P', 'R1149N', 'R1150J',
+       'R1151E', 'R1153T', 'R1154D', 'R1158T', 'R1161E', 'R1162N',
+       'R1163T', 'R1167M', 'R1168T', 'R1171M', 'R1172E', 'R1174T',
+       'R1175N', 'R1176M', 'R1185N', 'R1187P', 'R1191J', 'R1195E',
+       'R1196N', 'R1200T', 'R1203T', 'R1204T', 'R1207J', 'R1212P',
+       'R1215M', 'R1217T', 'R1221P', 'R1226D', 'R1229M', 'R1230J',
+       'R1236J', 'R1241J', 'R1243T', 'R1260D', 'R1268T', 'R1275D',
+       'R1281E', 'R1283T', 'R1288P', 'R1290M', 'R1291M', 'R1292E',
+       'R1293P', 'R1297T', 'R1298E', 'R1299T', 'R1302M', 'R1306E',
+       'R1308T', 'R1310J', 'R1311T', 'R1313J', 'R1315T', 'R1316T',
+       'R1317D', 'R1320D', 'R1323T', 'R1325C', 'R1328E', 'R1329T',
+       'R1330D', 'R1332M', 'R1334T', 'R1336T', 'R1337E', 'R1338T',
+       'R1339D', 'R1341T', 'R1345D', 'R1346T', 'R1347D', 'R1349T',
+       'R1350D', 'R1354E', 'R1355T', 'R1358T', 'R1361C', 'R1363T',
+       'R1364C', 'R1367D', 'R1368T', 'R1373T', 'R1374T', 'R1377M',
+       'R1378T', 'R1379E', 'R1380D', 'R1381T', 'R1382T', 'R1383J',
+       'R1385E', 'R1386T', 'R1387E', 'R1390M', 'R1391T', 'R1393T',
+       'R1394E', 'R1395M', 'R1396T', 'R1397D', 'R1398J', 'R1402E',
+       'R1404E', 'R1405E', 'R1412M', 'R1414E', 'R1415T', 'R1416T',
+       'R1420T', 'R1421M', 'R1422T', 'R1423E', 'R1425D', 'R1427T',
+       'R1433E', 'R1436J', 'R1438M', 'R1443D', 'R1446T', 'R1447M',
+       'R1448T', 'R1449T', 'R1454M', 'R1457T', 'R1459M', 'R1460M',
+       'R1461T', 'R1463E', 'R1467M', 'R1542J', 'R1565T', 'R1569T',
+       'R1571T', 'R1572T', 'R1573T']
+
 
 def getSplitDF(exp_df,sub_selection,exp):
     # get the 40/60% splits I used for exploratory analysis/confirmation set (see https://osf.io/y5zwt for registration)
@@ -74,12 +133,14 @@ def getSplitDF(exp_df,sub_selection,exp):
     if exp == 'FR1':
         np.random.seed(44462) # seed 44462 gives 25,845 of 60,417 recall trials (42.8%). Or 57/167 (34.1% of subs)
         # subject numbers via len(np.unique(subject_name_array)) after loading half_df or exp_df
-        from SWRmodule import total_sub_names_FR1 # all the unique sub names for FR1 task in df
+
         if sub_selection == 'whole':
-            analysis_df = exp_df
+            whole_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb in updated_sub_names_FR1]
+            analysis_df = exp_df.iloc[whole_sub_idxs]            
         else:
+            from SWRmodule import original_sub_names_FR1 # all the unique sub names for FR1 task in df
             proportion_subs = 0.5 # it's really 0.5 of initial pre-localization.pairs subs. So comes out to numbers above. And what we want to match for catFR1
-            first_half_sub_names = np.random.permutation(np.unique(total_sub_names_FR1))[:int(np.floor(len(np.unique(total_sub_names_FR1))*proportion_subs))]
+            first_half_sub_names = np.random.permutation(np.unique(original_sub_names_FR1))[:int(np.floor(len(np.unique(original_sub_names_FR1))*proportion_subs))]
             if sub_selection == 'first_half':
                 half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb in first_half_sub_names]
             else:
@@ -87,13 +148,15 @@ def getSplitDF(exp_df,sub_selection,exp):
             analysis_df = exp_df.iloc[half_sub_idxs]
     elif exp == 'catFR1':
         np.random.seed(44455) # seed 44455 gives 20,393 of 50,053 recall trials (40.7%). Or 46/138 (33.3% of subs)
-        from SWRmodule import total_sub_names_catFR1 # all the unique sub names for FR1 task in df
+        
         if sub_selection == 'whole':
-            analysis_df = exp_df
+            from SWRmodule import updated_sub_names_catFR1
+            whole_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb in updated_sub_names_catFR1]
+            analysis_df = exp_df.iloc[whole_sub_idxs]
         else:
-            total_sub_names_catFR1 = total_sub_names_catFR1[:-7] # first 40% (half) was done before I added 7 new patients
+            from SWRmodule import original_sub_names_catFR1 # original unique sub names for catFR1 task in df when I did split
             proportion_subs = 0.35 
-            first_half_sub_names = np.random.permutation(np.unique(total_sub_names_catFR1))[:int(np.floor(len(np.unique(total_sub_names_catFR1))*proportion_subs))]
+            first_half_sub_names = np.random.permutation(np.unique(original_sub_names_catFR1))[:int(np.floor(len(np.unique(original_sub_names_catFR1))*proportion_subs))]
             if sub_selection == 'first_half':
                 half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb in first_half_sub_names]
             else: # second half (really ~60%)
@@ -963,8 +1026,13 @@ def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
     
     # 2021-03-15 rewriting this to put 0 for good electrode, 1 for SOZ, and 2 for bad_electrodes (bad leads or the like)
     # 2022-02-04 this makes more sense to use remove_soz_ictal with 1 for bad_electrodes or SOZ
+    # 2022-05-09 fixed the logic so can just keep those channels with bad_bp_mask[channel] == 0
     
-    bad_bp_mask = np.zeros(len(tal_struct))
+    if remove_soz_ictal == 2:
+        bad_bp_mask = np.ones(len(tal_struct)) # for this one want to keep ONLY SOZ sites
+    else:
+        bad_bp_mask = np.zeros(len(tal_struct))
+        
     if elecs_cat != []:
 
         bad_elecs = elecs_cat['bad_channel']
@@ -978,10 +1046,12 @@ def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
                 elec_labels = ['-'.join(elec_labels[0:n2]), '-'.join(elec_labels[n2:])]
 
             if elec_labels[0] in bad_elecs or elec_labels[1] in bad_elecs:
-                bad_bp_mask[idx] = 1 # 2 for bad elecs/bad leads
+                bad_bp_mask[idx] = 2 # 2 for bad elecs/bad leads
             if elec_labels[0] in soz_elecs or elec_labels[1] in soz_elecs:
-                if remove_soz_ictal == True:
-                    bad_bp_mask[idx] = 1 # otherwise just leave as 0
+                if remove_soz_ictal == 1:
+                    bad_bp_mask[idx] = 1 # if not removing SOZ then just leave as 0
+                elif remove_soz_ictal == 2:
+                    bad_bp_mask[idx] = 0 # for this one want to keep ONLY SOZ sites
             
     return bad_bp_mask
 
@@ -1009,13 +1079,14 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
 #      Duration expanded until ripple power <2 SD. Events <20 ms or >200 ms excluded. Adjacent events <30 ms separation (peak-to-peak) merged.
     from scipy.signal import firwin,filtfilt,kaiserord,convolve2d
     
+    candidate_SD = 3
     artifact_buffer = 100 # ms around IED events to remove SWRs
     sr_factor = 1000/sr
     ripple_min = 20/sr_factor # convert each to ms
     ripple_max = 250/sr_factor #200/sr_factor
     min_separation = 30/sr_factor # peak to peak
     orig_eeg_rip = copy(eeg_rip)
-    clip_SD = np.mean(eeg_rip)+3*np.std(eeg_rip)
+    clip_SD = np.mean(eeg_rip)+candidate_SD*np.std(eeg_rip)
     eeg_rip[eeg_rip>clip_SD] = clip_SD # clip at 3SD since detecting at 3 SD now
     eeg_rip = eeg_rip**2 # square
     
@@ -1030,7 +1101,7 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     
     # now, find candidate events (>mean+4SD) 
     orig_eeg_rip = orig_eeg_rip**2
-    candidate_thresh = mean_detection_thresh+3*std_detection_thresh
+    candidate_thresh = mean_detection_thresh+candidate_SD*std_detection_thresh
     expansion_thresh = mean_detection_thresh+2*std_detection_thresh
     ripplelogic = orig_eeg_rip >= candidate_thresh
     # remove IEDs detected from Norman 25-60 algo...maybe should do this after expansion to 2SD??
@@ -1960,7 +2031,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=20, cores_per_job=20, \
+        num_jobs=9, cores_per_job=20, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
