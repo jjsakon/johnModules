@@ -1671,7 +1671,7 @@ def bootPSTH(point_array,binsize,smoothing_triangle,sr,start_offset): # same as 
     PSTH = triangleSmooth(norm_count[0],smoothing_triangle)
     return PSTH
 
-def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
+def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,5)):
     # make a pairwise comparison errorbar plot with swarm and FDR significance overlaid
     # comp_data: list of vectors of pairwise comparison data
     # comp_names: list of labels for each pairwise comparison
@@ -1701,7 +1701,7 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     sb.swarmplot(x='grouping', y='pairwise_data', data=comp_df, ax=axSub, color=(0.8,0,0.8), alpha=0.3)
     axSub.plot([axSub.get_xlim()[0],axSub.get_xlim()[1]],[0,0],linewidth=2,linestyle='--',color=(0,0,0),label='_nolegend_')
     for i in range(len(comp_names)):
-        plt.text(i-0.2,-5,'N='+str(len(comp_data[i])))
+        plt.text(i-0.2,-4,'N='+str(len(comp_data[i])))
     # put *s for FDR-corrected significance
     p_values = []
     for i in range(len(comp_data)):
@@ -1709,12 +1709,12 @@ def makePairwiseComparisonPlot(comp_data,comp_names,col_names,figsize=(7,4)):
     sig_after_correction = fdrcorrection(p_values)[0]
     for i in range(len(sig_after_correction)):
         if sig_after_correction[i]==True:
-            plt.text(i-0.07,4.575,'*',size=20)
+            plt.text(i-0.07,4.15,'*',size=20)
     print('FDR-corrected p-values for each:')
     fdr_pvalues = fdrcorrection(p_values)[1]
 
     # axSub.set(xticks=[],xticklabels=comp_names)
-    axSub.set_ylim(-5.5,5.5)
+    axSub.set_ylim(-4.5,4.5)
     plt.xlabel(col_names[0])
     plt.ylabel(col_names[1])
     figSub.tight_layout()
