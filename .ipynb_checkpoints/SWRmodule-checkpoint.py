@@ -87,6 +87,31 @@ updated_sub_names_catFR1 = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R
        'R1489E', 'R1491T', 'R1493T', 'R1496T', 'R1497T', 'R1498D',
        'R1501J', 'R1505J', 'R1515T', 'R1518T', 'R1525J',
        'R1254E', 'R1426N', 'R1176M', 'R1398J', 'R1147P']
+updated_sub_names_catFR1_encoding = ['R1004D', 'R1015J', 'R1024E', 'R1032D', 'R1035M', 'R1045E',
+       'R1061T', 'R1065J', 'R1066P', 'R1067P', 'R1083J', 'R1086M',
+       'R1089P', 'R1102P', 'R1105E', 'R1108J', 'R1112M', 'R1131M',
+       'R1138T', 'R1144E', 'R1147P', 'R1157C', 'R1158T', 'R1167M',
+       'R1171M', 'R1174T', 'R1176M', 'R1180C', 'R1188C', 'R1190P',
+       'R1192C', 'R1204T', 'R1207J', 'R1217T', 'R1221P', 'R1227T',
+       'R1230J', 'R1236J', 'R1239E', 'R1240T', 'R1243T', 'R1245E',
+       'R1254E', 'R1264P', 'R1269E', 'R1275D', 'R1278E', 'R1291M',
+       'R1293P', 'R1303E', 'R1310J', 'R1313J', 'R1315T', 'R1320D',
+       'R1328E', 'R1330D', 'R1332M', 'R1334T', 'R1337E', 'R1338T',
+       'R1343J', 'R1347D', 'R1348J', 'R1354E', 'R1361C', 'R1366J',
+       'R1367D', 'R1368T', 'R1372C', 'R1374T', 'R1377M', 'R1379E',
+       'R1380D', 'R1381T', 'R1382T', 'R1383J', 'R1385E', 'R1386T',
+       'R1387E', 'R1388T', 'R1393T', 'R1395M', 'R1396T', 'R1397D',
+       'R1398J', 'R1404E', 'R1405E', 'R1413D', 'R1414E', 'R1415T',
+       'R1420T', 'R1421M', 'R1422T', 'R1423E', 'R1426N', 'R1427T',
+       'R1433E', 'R1436J', 'R1443D', 'R1444D', 'R1445E', 'R1447M',
+       'R1448T', 'R1449T', 'R1450D', 'R1454M', 'R1456D', 'R1463E',
+       'R1465D', 'R1467M', 'R1468J', 'R1469D', 'R1472T', 'R1473J',
+       'R1476J', 'R1482J', 'R1484T', 'R1486J', 'R1487T', 'R1488T',
+       'R1489E', 'R1491T', 'R1493T', 'R1496T', 'R1497T', 'R1498D',
+       'R1501J', 'R1505J', 'R1515T', 'R1518T', 'R1525J',
+       'R1254E', 'R1426N', 'R1176M', 'R1398J', 'R1147P',        
+       'R1092J', 'R1477J'] # these two weren't compiling previously so adding in when unlocking full dataset 2022-07-08
+
 # updated 2022-05-19 for revisions. Includes HPC load for both SWRanalysis and clust and ENT+PHC load for SWRanalysis
 updated_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R1020J',
        'R1022J', 'R1026D', 'R1027J', 'R1031M', 'R1032D', 'R1033D',
@@ -123,7 +148,7 @@ updated_sub_names_FR1 = ['R1001P', 'R1002P', 'R1003P', 'R1006P', 'R1010J', 'R102
        'R1571T', 'R1572T', 'R1573T']
 
 
-def getSplitDF(exp_df,sub_selection,exp):
+def getSplitDF(exp_df,sub_selection,exp,selected_period='surrounding_recall'):
     # get the 40/60% splits I used for exploratory analysis/confirmation set (see https://osf.io/y5zwt for registration)
     
     # for seed in np.arange(44444,44499): # how I originally searched for a seed that gave 40/60 split with proportions I set below
@@ -150,18 +175,23 @@ def getSplitDF(exp_df,sub_selection,exp):
         np.random.seed(44455) # seed 44455 gives 20,393 of 50,053 recall trials (40.7%). Or 46/138 (33.3% of subs)
         
         if sub_selection == 'whole':
-            from SWRmodule import updated_sub_names_catFR1
+            if selected_period == 'encoding':
+                from SWRmodule import updated_sub_names_catFR1_encoding
+                updated_sub_names_catFR1 = updated_sub_names_catFR1_encoding
+            else:
+                from SWRmodule import updated_sub_names_catFR1
             whole_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb in updated_sub_names_catFR1]
             analysis_df = exp_df.iloc[whole_sub_idxs]
         else:
             from SWRmodule import original_sub_names_catFR1 # original unique sub names for catFR1 task in df when I did split
+            from SWRmodule import updated_sub_names_catFR1
             proportion_subs = 0.35 
             first_half_sub_names = np.random.permutation(np.unique(original_sub_names_catFR1))[:int(np.floor(len(np.unique(original_sub_names_catFR1))*proportion_subs))]
             if sub_selection == 'first_half':
                 half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb in first_half_sub_names]
             else: # second half (really ~60%)
                 # note that this will include the new subs since it's searching exp_df.subject by names
-                half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if sb not in first_half_sub_names]
+                half_sub_idxs = [i for i,sb in enumerate(exp_df.subject) if ((sb not in first_half_sub_names)&(sb in updated_sub_names_catFR1))]
             analysis_df = exp_df.iloc[half_sub_idxs]
     
     elif exp == 'RepFR1':
@@ -1099,7 +1129,7 @@ def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     mean_detection_thresh = np.mean(eeg_rip)
     std_detection_thresh = np.std(eeg_rip)
     
-    # now, find candidate events (>mean+4SD) 
+    # now, find candidate events (>mean+3SD) 
     orig_eeg_rip = orig_eeg_rip**2
     candidate_thresh = mean_detection_thresh+candidate_SD*std_detection_thresh
     expansion_thresh = mean_detection_thresh+2*std_detection_thresh
@@ -1349,6 +1379,7 @@ def fullPSTH(point_array,binsize,smoothing_triangle,sr,start_offset):
     count = np.histogram(xtimes,bins=edges);
     norm_count = count/np.array((num_trials*binsize/1000))
     #smoothed = fastSmooth(norm_count[0],5) # use triangular instead, although this gives similar answer
+    import ipdb; ipdb.set_trace()
     if smoothing_triangle==1:
         PSTH = norm_count[0]
     else:
@@ -1361,7 +1392,7 @@ def binBinaryArray(start_array,bin_size,sr_factor):
     bins = np.arange(0,start_array.shape[1],bin_in_sr) #start_array.shape[1]/bin_size*sr_factor
     
     # only need to do this for ripples (where bin_size is 100s of ms). For z-scores (which is already averaged) don't convert
-    if bin_size > 50:
+    if bin_size > 50: # this is just a dumb way to make sure it's not a z-score
         bin_to_hz = 1000/bin_size*bin_in_sr # factor that converts binned matrix to Hz
     else:
         bin_to_hz = 1
@@ -1453,19 +1484,39 @@ def getMixedEffectSEs(binned_start_array,subject_name_array,session_name_array):
     SEs = [] #CIs = []
     for time_bin in range(np.shape(binned_start_array)[1]):
         ripple_rates = binned_start_array[:,time_bin]
-        CI_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates})
+        SE_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates})
         # now get the CIs JUST for this time bin
         vc = {'session':'0+session'}
-        get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", CI_df, groups="subject", vc_formula=vc)
+        get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", SE_df, groups="subject", vc_formula=vc)
         bin_model = get_bin_CI_model.fit(reml=True, method='nm',maxiter=2000)
         mean_values.append(bin_model.params.Intercept)
-#         CIs = superVstack(CIs,bin_model.conf_int().iloc[0].values)
-        # instead of CIs (which are rather conservative and wide) let's use SEs
         SEs.append(bin_model.bse_fe)
-    # get CI distances at each bin by subtracting from means
+    # get SE distances at each bin
     SE_plot = superVstack(np.array(SEs).T,np.array(SEs).T)
     
     return SE_plot
+
+def getMixedEffectMeanSEs(binned_start_array,subject_name_array,session_name_array):
+    # take a binned array of ripples and find the mixed effect SEs at each bin
+    # note that output is the net ± distance from mean
+    import statsmodels.formula.api as smf
+
+    # now, to set up ME regression, append each time_bin to bottom and duplicate
+    mean_values = []
+    SEs = [] #CIs = []
+    for time_bin in range(np.shape(binned_start_array)[1]):
+        ripple_rates = binned_start_array[:,time_bin]
+        SE_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates})
+        # now get the CIs JUST for this time bin
+        vc = {'session':'0+session'}
+        get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", SE_df, groups="subject", vc_formula=vc)
+        bin_model = get_bin_CI_model.fit(reml=True, method='nm',maxiter=2000)
+        mean_values.append(bin_model.params.Intercept)
+        SEs.append(bin_model.bse_fe)
+    # get SE distances at each bin
+    SE_plot = superVstack(np.array(SEs).T,np.array(SEs).T)
+    
+    return mean_values,SE_plot
 
 def fixSEgaps(SE_plot):
     # fill in places where ME model for that bin didn't converge
@@ -2031,7 +2082,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=9, cores_per_job=20, \
+        num_jobs=6, cores_per_job=50, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
