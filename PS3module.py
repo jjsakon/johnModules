@@ -552,7 +552,7 @@ def artifactExclusion(eegs_pre,eegs_post):
         ts_pre = eegs_pre[:, i, :]
         ts_post = eegs_post[:, i, :]
         pre_eeg = np.mean(ts_pre[:, int(sr*0.55):int(sr*0.9)], 1) # this is out of -950:-50 eeg before stim_on
-        # was taking -550:-150 before and 150:550 after la Mohan et al. 
+        # was taking -550:-150 before and 150:550 after a la Mohan et al. 
         # If you look at code Ethan does -400:-50 and 50:400 tho
         post_eeg = np.mean(ts_post[:, int(sr*0.0):int(sr*0.35)], 1) # this is out of 50:950 after stim_off 
         eeg_t_chan, eeg_p_chan = ttest_rel(post_eeg, pre_eeg, nan_policy='omit')

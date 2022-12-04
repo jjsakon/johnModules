@@ -1484,7 +1484,7 @@ def getMixedEffectSEs(binned_start_array,subject_name_array,session_name_array):
     for time_bin in range(np.shape(binned_start_array)[1]):
         ripple_rates = binned_start_array[:,time_bin]
         SE_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates})
-        # now get the CIs JUST for this time bin
+        # now get the SEs JUST for this time bin
         vc = {'session':'0+session'}
         get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", SE_df, groups="subject", vc_formula=vc)
         bin_model = get_bin_CI_model.fit(reml=True, method='nm',maxiter=2000)
@@ -1495,7 +1495,7 @@ def getMixedEffectSEs(binned_start_array,subject_name_array,session_name_array):
     
     return SE_plot
 
-def getMixedEffectMeanSEs(binned_start_array,subject_name_array,session_name_array):
+def getMixedEffectMeanSEs(binned_start_array,subject_name_array,session_name_array,elec_name_array = []):
     # take a binned array of ripples and find the mixed effect SEs at each bin
     # note that output is the net ± distance from mean
     import statsmodels.formula.api as smf
@@ -1505,13 +1505,21 @@ def getMixedEffectMeanSEs(binned_start_array,subject_name_array,session_name_arr
     SEs = [] #CIs = []
     for time_bin in range(np.shape(binned_start_array)[1]):
         ripple_rates = binned_start_array[:,time_bin]
-        SE_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates})
-        # now get the CIs JUST for this time bin
-        vc = {'session':'0+session'}
-        get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", SE_df, groups="subject", vc_formula=vc)
+        if elec_name_array == []: # if not defined just do session in subs
+            SE_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates})
+            # now get the CIs JUST for this time bin
+            vc = {'session':'0+session'}
+            get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", SE_df, groups="subject", vc_formula=vc)
+        else:
+            SE_df = pd.DataFrame(data={'session':session_name_array,'subject':subject_name_array,'ripple_rates':ripple_rates,
+                                       'elec':elec_name_array})
+            # now get the SEs JUST for this time bin
+            vc = {'session':'0+session','elec':'0+elec'}
+            get_bin_CI_model = smf.mixedlm("ripple_rates ~ 1", SE_df, groups="subject", vc_formula=vc)            
         bin_model = get_bin_CI_model.fit(reml=True, method='nm',maxiter=2000)
         mean_values.append(bin_model.params.Intercept)
-        SEs.append(bin_model.bse_fe)
+        SEs.append(bin_model.bse_fe.Intercept)
+
     # get SE distances at each bin
     SE_plot = superVstack(np.array(SEs).T,np.array(SEs).T)
     
@@ -1558,7 +1566,7 @@ def MEstatsAcrossBins(binned_start_array,subject_name_array,session_name_array):
     bin_model = sig_bin_model.fit(reml=True, method='nm',maxiter=2000)
     return bin_model
 
-def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,sub_forgot,sess_forgot,sub_recalled,sess_recalled):
+def MEstatsAcrossCategories(binned_recalled_array,sub_recalled,sess_recalled,binned_forgot_array,sub_forgot,sess_forgot):
     # here looking at only a single bin but now comparing across categories (e.g. remembered v. forgotten)
     import statsmodels.formula.api as smf
     
@@ -1584,7 +1592,7 @@ def MEstatsAcrossCategories(binned_recalled_array,binned_forgot_array,sub_forgot
     bin_df = pd.DataFrame(data={'session':session_name,'subject':subject_name,
                                'category':category_label,'ripple_rates':ripple_rates})
     vc = {'session':'0+session'}
-    sig_bin_model = smf.mixedlm("ripple_rates ~ category", bin_df, groups="subject", vc_formula=vc) #, re_formula="category")
+    sig_bin_model = smf.mixedlm("ripple_rates ~ category", bin_df, groups="subject", vc_formula=vc,re_formula="category")
     bin_model = sig_bin_model.fit(reml=True, method='nm',maxiter=2000)
     return bin_model
 
@@ -2051,7 +2059,7 @@ def SubjectStatTable(subjects):
     
     return table  
 
-def ClusterRun(function, parameter_list, max_cores=200):
+def ClusterRun(function, parameter_list, max_cores=300):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -2081,7 +2089,7 @@ def ClusterRun(function, parameter_list, max_cores=200):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=6, cores_per_job=50, \
+        num_jobs=1, cores_per_job=70, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:

@@ -83,7 +83,7 @@ IFG_labels = ['left opifg opercular part of the inferior frontal gyrus',' left o
               'left orifg orbital part of the inferior frontal gyrus', ' left orifg orbital part of the inferior frontal gyrus',
               'left trifg triangular part of the inferior frontal gyrus',' left trifg triangular part of the inferior frontal gyrus']
 nonHPC_MTL_labels = [MTL_labels[i] for i in range(0,len(MTL_labels)) if i not in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]]
-# nonHPC_MTL_labels = [MTL_labels[i] for i not in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]] # all labels within MTL that aren't HPC
+# all labels within MTL that aren't HPC
 
 
 ## what's used in SWR retrieval paper
