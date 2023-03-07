@@ -24,7 +24,7 @@ def nameAsString(string):
             name_as_str = k
     return name_as_str
 def splitUpString(string,delimiter=''):
-    if delimiter is '':
+    if delimiter == '':
         split_array = np.array(list(map(float,string.split())))
     else:
         split_array = np.array(list(map(float,string.split(delimiter))))
@@ -105,7 +105,7 @@ def plotLogHist(x, bins):
     logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
     plt.hist(x, bins=logbins)
     plt.xscale('log')
-
+    
 def tscorePlot(mdl,yrange=7.5,names=None): 
     # plot the tscores with 2 SEs shaded for model results
     import matplotlib.pyplot as plt

@@ -24,7 +24,7 @@ def nameAsString(string):
             name_as_str = k
     return name_as_str
 def splitUpString(string,delimiter=''):
-    if delimiter is '':
+    if delimiter == '':
         split_array = np.array(list(map(float,string.split())))
     else:
         split_array = np.array(list(map(float,string.split(delimiter))))
