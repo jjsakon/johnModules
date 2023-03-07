@@ -1088,8 +1088,9 @@ def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
 def getStartEndArrays(ripple_array):
     # get separate arrays of SWR starts and SWR ends from the full binarized array
     start_array = np.zeros((ripple_array.shape),dtype='uint8')
-    end_array = np.zeros((ripple_array.shape),dtype='uint8')
-    num_trials = ripple_array.shape[0]
+    end_array = np.zeros((ripple_array.shape),dtype='uint8')        
+    
+    num_trials = ripple_array.shape[0]    
     for trial in range(num_trials):
         ripplelogictrial = ripple_array[trial]
         starts,ends = getLogicalChunks(ripplelogictrial)
@@ -1315,7 +1316,6 @@ def ptsa_to_mne(eegs,time_length): # in ms
 
     time = [x/1000 for x in time_length] # convert to s for MNE
     clips = np.array(eegs[:, :, int(np.round(sr*time[0])):int(np.round(sr*time[1]))])
-
     mne_evs = np.empty([clips.shape[0], 3]).astype(int)
     mne_evs[:, 0] = np.arange(clips.shape[0]) # at each timepoint
     mne_evs[:, 1] = clips.shape[2] # 0
@@ -2089,7 +2089,7 @@ def ClusterRun(function, parameter_list, max_cores=300):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=1, cores_per_job=70, \
+        num_jobs=5, cores_per_job=50, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
