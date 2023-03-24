@@ -2059,7 +2059,7 @@ def SubjectStatTable(subjects):
     
     return table  
 
-def ClusterRun(function, parameter_list, max_cores=300):
+def ClusterRun(function, parameter_list, max_cores=400):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -2089,7 +2089,7 @@ def ClusterRun(function, parameter_list, max_cores=300):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=5, cores_per_job=50, \
+        num_jobs=10, cores_per_job=40, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
@@ -2105,3 +2105,8 @@ def ClusterRun(function, parameter_list, max_cores=300):
 # 30 works for most of FR1 encoding...40 works for all
 # 25 didn't work for a few...made a list of the 15 or so in SWRanalysis 2022-03-09
 # 25 didn't work for a few catFR1 too. Made list of 20 and will try running with 50 cores/job
+
+#2023-03-14 SWRanalysisClustering with HFA added using 20 GB jobs have 91 HPC left, 75 non-HPC left
+#2023-03-15 same using 40 GB have 83 HPC and 65 nonHPC_MTL left
+#2023-03-15 same using 60 GB have 82 and 64 left. No more memory errors? 
+#2023-03-16 using 100 GB gave 66 (!) and 64 left. This got me to 241894 trials. 150 GB didn't add any. 

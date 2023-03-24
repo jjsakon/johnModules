@@ -56,7 +56,27 @@ PFC_ind = ['caudalmiddlefrontal','frontalpole','lateralorbitofrontal','medialorb
           'parsorbitalis','parstriangularis','rostralmiddlefrontal','superiorfrontal']
 cingulate_ind = ['caudalanteriorcingulate','isthmuscingulate','posteriorcingulate','rostralanteriorcingulate']
 parietal_ind = ['inferiorparietal','postcentral','precuneus','superiorparietal','supramarginal']
-occipital_ind = ['cuneus','lateraloccipital','lingual','pericalcarine']
+
+# occipital regions 2023-03-23
+# don't include Lingual Gyrus (LiG) since it shares a border with PHC
+# First 3 are Desikan-Killiany; rest are neuromorphometrics
+occipital_labels = ['cuneus','lateraloccipital','pericalcarine', 
+                'left iog inferior occipital gyrus','right iog inferior occipital gyrus',
+                'left mog middle occipital gyrus','right mog middle occipital gyrus'
+                'left sog superior occipital gyrus','right sog superior occipital gyrus',
+                'left calc calcarine cortex','right calc calcarine cortex',
+                'left cun cuneus','right cun cuneus'
+                'left ocp occipital pole','right ocp occipital pole',
+                'left ofug occipital fusiform gyrus','right ofug occipital fusiform gyrus',
+                ' left iog inferior occipital gyrus',' right iog inferior occipital gyrus',
+                ' left mog middle occipital gyrus',' right mog middle occipital gyrus'
+                ' left sog superior occipital gyrus',' right sog superior occipital gyrus',
+                ' left calc calcarine cortex',' right calc calcarine cortex',
+                ' left cun cuneus',' right cun cuneus'
+                ' left ocp occipital pole',' right ocp occipital pole',
+                ' left ofug occipital fusiform gyrus',' right ofug occipital fusiform gyrus']
+
+
 other_TL_ind = ['fusiform','transversetemporal'] # temporal lobe but not MTL
 other_ind = ['insula','none','precentral','paracentral','right inf lat vent','left inf lat vent', # not sure where to put these
             'left cerebral white matter','right cerebral white matter', # these wb labels can be anywhere in hemisphere so just put in other
@@ -470,3 +490,4 @@ temporalpole
 transversetemporal
 unknown
 '''
+
