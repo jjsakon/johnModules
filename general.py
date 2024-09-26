@@ -2,6 +2,7 @@
 # 2020-01-09 JS
 
 import numpy as np
+import os
 
 def listUnion(li1, li2): # union of two lists
     return list(set().union(li1,li2))
@@ -439,3 +440,16 @@ cm_data = [[0.2081, 0.1663, 0.5292], [0.2116238095, 0.1897809524, 0.5776761905],
  [0.9763, 0.9831, 0.0538]]
 
 parula_map = LinearSegmentedColormap.from_list('parula', cm_data)
+
+def natural_sort_key(s):
+    import re
+    """
+    Generate a key for sorting strings that contain numbers in a natural way.
+
+    :param s: The string to be sorted.
+    :return: A tuple containing non-numeric and numeric parts of the string.
+    
+    Use it like this: 
+    sorted(LFP_files, key=natural_sort_key) 
+    """
+    return [int(text) if text.isdigit() else text.lower() for text in re.split('(\d+)', s)]

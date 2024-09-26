@@ -1316,17 +1316,26 @@ def detectRipplesStaresina(eeg_rip,sr):
 def downsampleBinary(array,factor):
     # input should be trial X time binary matrix
     array_save = np.array([])
-    if factor-int(factor)==0: # if an integer
+    if ((factor-int(factor)==0) & (array.shape[1]%factor==0)): # if an integer and array is divisible by it
         for t in range(array.shape[0]): #from https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
             array_save = superVstack(array_save,array[t].reshape(-1,int(factor)).mean(axis=1))
     else:
-        # when dividing by non-integer, can just use FFT and round to get new sampling
-        from scipy.signal import resample
-        if array.shape[1]/factor-int(array.shape[1]/factor)!=0:
-            print('Did not get whole number array for downsampling...rounding to nearest 100')
-        new_sampling = int( round((array.shape[1]/factor)/100) )*100
-        for t in range(array.shape[0]):
-            array_save = superVstack(array_save,np.round(resample(array[t],new_sampling)))
+        if (array.shape[1]-1)%factor==0: # in this simple case easiest to just remove a sample
+            array = array[:,:-1]
+            for t in range(array.shape[0]): #from https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
+                array_save = superVstack(array_save,array[t].reshape(-1,int(factor)).mean(axis=1))
+        elif (array.shape[1]-3)%factor==0: # in this simple case easiest to just remove 3 samples
+            array = array[:,:-3]
+            for t in range(array.shape[0]): #from https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
+                array_save = superVstack(array_save,array[t].reshape(-1,int(factor)).mean(axis=1))          
+        else: # array isn't divisible by the integer factor
+            # in more complicated cases can just use FFT and round to get new sampling
+            from scipy.signal import resample
+            if array.shape[1]/factor-int(array.shape[1]/factor)!=0:
+                print('Did not get whole number array for downsampling...rounding to nearest 100')
+            new_sampling = int( round((array.shape[1]/factor)/100) )*100
+            for t in range(array.shape[0]):
+                array_save = superVstack(array_save,np.round(resample(array[t],new_sampling)))
     return array_save
 
 def ptsa_to_mne(eegs,time_length): # in ms
@@ -1806,9 +1815,6 @@ def StartFig():
     test = plt.figure();
     plt.rcParams.update({'font.size':14});
     return test;
-
-def PrintTest():
-    print('testttt')
     
 def SaveFig(basename):
     plt.savefig(basename+'.png')
@@ -2132,6 +2138,7 @@ def ClusterRun(function, parameter_list, max_cores=999):
 #2023-03-15 same using 40 GB have 83 HPC and 65 nonHPC_MTL left
 #2023-03-15 same using 60 GB have 82 and 64 left. No more memory errors? 
 #2023-03-16 using 100 GB gave 66 (!) and 64 left. This got me to 241894 trials. 150 GB didn't add any. 
+<<<<<<< HEAD
 #2023-03-24 ran up to 80 GB with AMY--saw no memory errors after that
 #2023-03-25 ran clustering up to 80 GB with revised nonHPC_MTL and down to 50. Down to 49 after doing 135 GB. 175 GB didn't change anything.
 #2023-03-26 ran SWRanalysis up to 20 GB with nonHPC_MTL. 80GB gave me 45. 120 GB gave me 41.
@@ -2207,3 +2214,5 @@ def ClusterCheckedTup(function, parameter_list, *args, **kwargs):
             if not bool(res[i])))
         raise RuntimeError(str(failed)+' of '+str(len(res))+' jobs failed!')
 
+=======
+>>>>>>> ba13a8668a1b588b1726363c48d83f95a50499aa

@@ -1316,17 +1316,26 @@ def detectRipplesStaresina(eeg_rip,sr):
 def downsampleBinary(array,factor):
     # input should be trial X time binary matrix
     array_save = np.array([])
-    if factor-int(factor)==0: # if an integer
+    if ((factor-int(factor)==0) & (array.shape[1]%factor==0)): # if an integer and array is divisible by it
         for t in range(array.shape[0]): #from https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
             array_save = superVstack(array_save,array[t].reshape(-1,int(factor)).mean(axis=1))
     else:
-        # when dividing by non-integer, can just use FFT and round to get new sampling
-        from scipy.signal import resample
-        if array.shape[1]/factor-int(array.shape[1]/factor)!=0:
-            print('Did not get whole number array for downsampling...rounding to nearest 100')
-        new_sampling = int( round((array.shape[1]/factor)/100) )*100
-        for t in range(array.shape[0]):
-            array_save = superVstack(array_save,np.round(resample(array[t],new_sampling)))
+        if (array.shape[1]-1)%factor==0: # in this simple case easiest to just remove a sample
+            array = array[:,:-1]
+            for t in range(array.shape[0]): #from https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
+                array_save = superVstack(array_save,array[t].reshape(-1,int(factor)).mean(axis=1))
+        elif (array.shape[1]-3)%factor==0: # in this simple case easiest to just remove 3 samples
+            array = array[:,:-3]
+            for t in range(array.shape[0]): #from https://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
+                array_save = superVstack(array_save,array[t].reshape(-1,int(factor)).mean(axis=1))          
+        else: # array isn't divisible by the integer factor
+            # in more complicated cases can just use FFT and round to get new sampling
+            from scipy.signal import resample
+            if array.shape[1]/factor-int(array.shape[1]/factor)!=0:
+                print('Did not get whole number array for downsampling...rounding to nearest 100')
+            new_sampling = int( round((array.shape[1]/factor)/100) )*100
+            for t in range(array.shape[0]):
+                array_save = superVstack(array_save,np.round(resample(array[t],new_sampling)))
     return array_save
 
 def ptsa_to_mne(eegs,time_length): # in ms
