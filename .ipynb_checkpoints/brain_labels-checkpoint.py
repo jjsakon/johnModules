@@ -89,7 +89,7 @@ MTL_labels = MTL_stein+MTL_ind
 LTC_labels = LTC_stein+LTC_ind
 PFC_labels = PFC_stein+PFC_ind
 OTHER_labels = cingulate_stein+parietal_stein+other_TL_stein+other_stein+ \
-                cingulate_ind+occipital_ind+other_TL_ind+other_ind
+                cingulate_ind+occipital_labels+other_TL_ind+other_ind
 ALL_labels = MTL_labels+LTC_labels+PFC_labels+OTHER_labels
 
 
@@ -102,8 +102,8 @@ IFG_labels = ['left opifg opercular part of the inferior frontal gyrus',' left o
               'left opifg opercular part of the inferior frontal gyrus',' left opifg opercular part of the inferior frontal gyrus',
               'left orifg orbital part of the inferior frontal gyrus', ' left orifg orbital part of the inferior frontal gyrus',
               'left trifg triangular part of the inferior frontal gyrus',' left trifg triangular part of the inferior frontal gyrus']
-nonHPC_MTL_labels = [MTL_labels[i] for i in range(0,len(MTL_labels)) if i not in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]]
-# all labels within MTL that aren't HPC
+nonHPC_MTL_labels = [MTL_labels[i] for i in range(0,len(MTL_labels)) if i not in [0,1,2,3,4,8,9,10,11,12,13,17,18,19,22,23,25,27,28,30,32,33,35,37,38,40,42,45,46,49,52,53,56]]
+# all labels within MTL that aren't HPC...or AMY # 2023-03-24 updated to remove AMY, MTL WM, temporal pole
 
 
 ## what's used in SWR retrieval paper

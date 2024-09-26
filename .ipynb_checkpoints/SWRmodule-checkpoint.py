@@ -1085,22 +1085,44 @@ def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
             
     return bad_bp_mask
 
-def getStartEndArrays(ripple_array):
-    # get separate arrays of SWR starts and SWR ends from the full binarized array
-    start_array = np.zeros((ripple_array.shape),dtype='uint8')
-    end_array = np.zeros((ripple_array.shape),dtype='uint8')        
+# def getStartEndArrays(ripple_array):
+#     '''
+#     get separate arrays of SWR starts and SWR ends from the full binarized array
+#     '''
     
-    num_trials = ripple_array.shape[0]    
-    for trial in range(num_trials):
-        ripplelogictrial = ripple_array[trial]
-        starts,ends = getLogicalChunks(ripplelogictrial)
-        temp_row = np.zeros(len(ripplelogictrial))
-        temp_row[starts] = 1
-        start_array[trial] = temp_row # time when each SWR starts
-        temp_row = np.zeros(len(ripplelogictrial))
-        temp_row[ends] = 1
-        end_array[trial] = temp_row
-    return start_array,end_array
+#     start_array = np.zeros((ripple_array.shape),dtype='uint8')
+#     end_array = np.zeros((ripple_array.shape),dtype='uint8')        
+    
+#     num_trials = ripple_array.shape[0]    
+#     for trial in range(num_trials):
+#         ripplelogictrial = ripple_array[trial]
+#         starts,ends = getLogicalChunks(ripplelogictrial)
+#         temp_row = np.zeros(len(ripplelogictrial))
+#         temp_row[starts] = 1
+#         start_array[trial] = temp_row # time when each SWR starts
+#         temp_row = np.zeros(len(ripplelogictrial))
+#         temp_row[ends] = 1
+#         end_array[trial] = temp_row
+#     return start_array,end_array
+
+def getStartEndArrays(ripple_array):
+    '''
+    Get separate arrays of SWR starts and SWR ends from the full binarized array
+    '''
+    
+    # Shift the ripple array to the right and left by one position
+    shifted_right = np.roll(ripple_array, shift=1, axis=1)
+    shifted_left = np.roll(ripple_array, shift=-1, axis=1)
+    
+    # Find the start by looking for a transition from 0 to 1
+    start_array = (ripple_array == 1) & (shifted_right == 0)
+    start_array[:, 0] = ripple_array[:, 0]  # Handle the edge case for the first column
+    
+    # Find the end by looking for a transition from 1 to 0
+    end_array = (ripple_array == 1) & (shifted_left == 0)
+    end_array[:, -1] = ripple_array[:, -1]  # Handle the edge case for the last column
+    
+    return start_array.astype('uint8'), end_array.astype('uint8')
 
 def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     # detect ripples similar to with Butterworth, but using Norman et al 2019 algo (based on Stark 2014 algo). Description:
@@ -2059,7 +2081,7 @@ def SubjectStatTable(subjects):
     
     return table  
 
-def ClusterRun(function, parameter_list, max_cores=400):
+def ClusterRun(function, parameter_list, max_cores=999):
     '''function: The routine run in parallel, which must contain all necessary
        imports internally.
     
@@ -2089,7 +2111,7 @@ def ClusterRun(function, parameter_list, max_cores=400):
     # so like 2 and 50 instead of 1 and 100 etc. Went up to 5/20 for encoding at points
     # ...actually now went up to 10/10 which seems to stop memory errors 2020-08-12
     with cluster_helper.cluster.cluster_view(scheduler="sge", queue="RAM.q", \
-        num_jobs=10, cores_per_job=40, \
+        num_jobs=25, cores_per_job=20, \
         extra_params={'resources':'pename=python-round-robin'}, \
         profile=myhomedir + '/.ipython/') \
         as view:
@@ -2110,3 +2132,78 @@ def ClusterRun(function, parameter_list, max_cores=400):
 #2023-03-15 same using 40 GB have 83 HPC and 65 nonHPC_MTL left
 #2023-03-15 same using 60 GB have 82 and 64 left. No more memory errors? 
 #2023-03-16 using 100 GB gave 66 (!) and 64 left. This got me to 241894 trials. 150 GB didn't add any. 
+#2023-03-24 ran up to 80 GB with AMY--saw no memory errors after that
+#2023-03-25 ran clustering up to 80 GB with revised nonHPC_MTL and down to 50. Down to 49 after doing 135 GB. 175 GB didn't change anything.
+#2023-03-26 ran SWRanalysis up to 20 GB with nonHPC_MTL. 80GB gave me 45. 120 GB gave me 41.
+#2023-06-30 FR1 HPC required 70 for all but 1...which compiled at 125
+
+
+def ClusterRunSlurm(function, parameter_list, max_jobs=25, procs_per_job=1,mem='15GB'):
+    '''function: The routine run in parallel, which must contain all necessary
+    imports internally.
+
+    parameter_list: should be an iterable of elements, for which each
+    element will be passed as the parameter to function for each parallel
+    execution.
+
+    max_jobs: Standard Rhino cluster etiquette is to stay within 100 jobs
+    running at a time.  Please ask for permission before using more.
+
+    procs_per_job: The number of concurrent processes to reserve per job.
+
+    mem: A string specifying the amount of RAM required per job, formatted
+    like '5GB'.  Standard Rhino cluster etiquette is to stay within 320GB
+    total across all jobs.
+
+    In jupyterlab, the number of engines reported as initially running may
+    be smaller than the number actually running.  Check usage from an ssh
+    terminal using:  "squeue" or "squeue -u $USER"
+
+    Undesired running jobs can be killed by reading the JOBID at the left
+    of that squeue command, then doing:  scancel JOBID
+    '''
+    import cmldask.CMLDask as da
+    from dask.distributed import wait, as_completed, progress
+
+    num_jobs = len(parameter_list)
+    num_jobs = min(num_jobs, max_jobs)
+
+    with da.new_dask_client_slurm(function.__name__, mem, max_n_jobs=num_jobs,
+                                  processes_per_job=procs_per_job) as client:
+        futures = client.map(function, parameter_list)
+        wait(futures)
+        res = client.gather(futures)
+
+    return res
+
+def ClusterChecked(function, parameter_list, *args, **kwargs):
+    '''Parallelizes and raises an exception if any results are False.'''
+    res = ClusterRunSlurm(function, parameter_list, *args, **kwargs)
+    if all(res):
+        print('All', len(res), 'jobs successful.')
+    else:
+        failed = sum([not bool(b) for b in res])
+    if failed == len(res):
+        raise RuntimeError('All '+str(failed)+' jobs failed!')
+    else:
+        print('Error on job parameters:\n  ' + 
+          '\n  '.join(str(parameter_list[i]) for i in range(len(res))
+            if not bool(res[i])))
+        raise RuntimeError(str(failed)+' of '+str(len(res))+' jobs failed!')
+
+def ClusterCheckedTup(function, parameter_list, *args, **kwargs):
+    '''Parallelizes and raises an exception if any results have False
+     as the first value of the returned list/tuple.'''
+    res = ClusterRunSlurm(function, parameter_list, *args, **kwargs)
+    if all(res):
+        print('All', len(res), 'jobs successful.')
+    else:
+        failed = sum([not bool(b[0]) for b in res])
+    if failed == len(res):
+        raise RuntimeError('All '+str(failed)+' jobs failed!')
+    else:
+        print('Error on job parameters:\n  ' + 
+          '\n  '.join(str(parameter_list[i]) for i in range(len(res))
+            if not bool(res[i])))
+        raise RuntimeError(str(failed)+' of '+str(len(res))+' jobs failed!')
+
