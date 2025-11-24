@@ -10,6 +10,7 @@ see SWRgetRegionNames for details on getting the region names and the order or o
 in SWRmodule.
 2020-09-04 JS checked this for catFR too and regions are the same
 2021-10-06 JS adding a general temporal lobe labels
+2024-10-20 JS added frontal cortex regions to look at ACC and OFC
 '''
 
 
@@ -56,27 +57,7 @@ PFC_ind = ['caudalmiddlefrontal','frontalpole','lateralorbitofrontal','medialorb
           'parsorbitalis','parstriangularis','rostralmiddlefrontal','superiorfrontal']
 cingulate_ind = ['caudalanteriorcingulate','isthmuscingulate','posteriorcingulate','rostralanteriorcingulate']
 parietal_ind = ['inferiorparietal','postcentral','precuneus','superiorparietal','supramarginal']
-
-# occipital regions 2023-03-23
-# don't include Lingual Gyrus (LiG) since it shares a border with PHC
-# First 3 are Desikan-Killiany; rest are neuromorphometrics
-occipital_labels = ['cuneus','lateraloccipital','pericalcarine', 
-                'left iog inferior occipital gyrus','right iog inferior occipital gyrus',
-                'left mog middle occipital gyrus','right mog middle occipital gyrus'
-                'left sog superior occipital gyrus','right sog superior occipital gyrus',
-                'left calc calcarine cortex','right calc calcarine cortex',
-                'left cun cuneus','right cun cuneus'
-                'left ocp occipital pole','right ocp occipital pole',
-                'left ofug occipital fusiform gyrus','right ofug occipital fusiform gyrus',
-                ' left iog inferior occipital gyrus',' right iog inferior occipital gyrus',
-                ' left mog middle occipital gyrus',' right mog middle occipital gyrus'
-                ' left sog superior occipital gyrus',' right sog superior occipital gyrus',
-                ' left calc calcarine cortex',' right calc calcarine cortex',
-                ' left cun cuneus',' right cun cuneus'
-                ' left ocp occipital pole',' right ocp occipital pole',
-                ' left ofug occipital fusiform gyrus',' right ofug occipital fusiform gyrus']
-
-
+occipital_ind = ['cuneus','lateraloccipital','lingual','pericalcarine']
 other_TL_ind = ['fusiform','transversetemporal'] # temporal lobe but not MTL
 other_ind = ['insula','none','precentral','paracentral','right inf lat vent','left inf lat vent', # not sure where to put these
             'left cerebral white matter','right cerebral white matter', # these wb labels can be anywhere in hemisphere so just put in other
@@ -89,7 +70,7 @@ MTL_labels = MTL_stein+MTL_ind
 LTC_labels = LTC_stein+LTC_ind
 PFC_labels = PFC_stein+PFC_ind
 OTHER_labels = cingulate_stein+parietal_stein+other_TL_stein+other_stein+ \
-                cingulate_ind+occipital_labels+other_TL_ind+other_ind
+                cingulate_ind+occipital_ind+other_TL_ind+other_ind
 ALL_labels = MTL_labels+LTC_labels+PFC_labels+OTHER_labels
 
 
@@ -102,8 +83,8 @@ IFG_labels = ['left opifg opercular part of the inferior frontal gyrus',' left o
               'left opifg opercular part of the inferior frontal gyrus',' left opifg opercular part of the inferior frontal gyrus',
               'left orifg orbital part of the inferior frontal gyrus', ' left orifg orbital part of the inferior frontal gyrus',
               'left trifg triangular part of the inferior frontal gyrus',' left trifg triangular part of the inferior frontal gyrus']
-nonHPC_MTL_labels = [MTL_labels[i] for i in range(0,len(MTL_labels)) if i not in [0,1,2,3,4,8,9,10,11,12,13,17,18,19,22,23,25,27,28,30,32,33,35,37,38,40,42,45,46,49,52,53,56]]
-# all labels within MTL that aren't HPC...or AMY # 2023-03-24 updated to remove AMY, MTL WM, temporal pole
+nonHPC_MTL_labels = [MTL_labels[i] for i in range(0,len(MTL_labels)) if i not in [0,1,2,3,4,9,10,11,12,13,25,30,35,40,45,46,49,52,53,56]]
+# all labels within MTL that aren't HPC
 
 
 ## what's used in SWR retrieval paper
@@ -122,6 +103,23 @@ extra_TL = [' left fug fusiform gyrus',' right fug fusiform gyrus','left fug fus
           ' left ttg transverse temporal gyrus',' right ttg transverse temporal gyrus','left ttg transverse temporal gyrus','right ttg transverse temporal gyrus'
          ]
 temporal_lobe_labels = temporal_lobe_labels+extra_TL
+
+# Want to get a group of ACC and OFC (will include MFC) to compare to Fried data
+ACC_OF_MFC_labels = [' left aorg anterior orbital gyrus','left aorg anterior orbital gyrus',
+              ' left lorg lateral orbital gyrus','left lorg lateral orbital gyrus',
+              ' left porg posterior orbital gyrus','left porg posterior orbital gyrus',
+              ' left morg medial orbital gyrus','left morg medial orbital gyrus',
+              ' left gre gyrus rectus','left gre gyrus rectus',
+              ' left mfc medial frontal cortex','left mfc medial frontal cortex',
+              ' left acgg anterior cingulate gyrus','left acgg anterior cingulate gyrus',
+              ' right aorg anterior orbital gyrus','right aorg anterior orbital gyrus',
+              ' right lorg lateral orbital gyrus','right lorg lateral orbital gyrus',
+              ' right porg posterior orbital gyrus','right porg posterior orbital gyrus',
+              ' right morg medial orbital gyrus','right morg medial orbital gyrus',
+              ' right gre gyrus rectus','right gre gyrus rectus',
+              ' right mfc medial frontal cortex','right mfc medial frontal cortex',
+              ' right acgg anterior cingulate gyrus','right acgg anterior cingulate gyrus'              
+             ]
 
 '''
 # This is the original, which only has labels for those places STIMULATED across PS tasks.
@@ -490,4 +488,3 @@ temporalpole
 transversetemporal
 unknown
 '''
-

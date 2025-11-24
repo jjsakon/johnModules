@@ -1085,44 +1085,44 @@ def getBadChannels(tal_struct,elecs_cat,remove_soz_ictal):
             
     return bad_bp_mask
 
-# def getStartEndArrays(ripple_array):
-#     '''
-#     get separate arrays of SWR starts and SWR ends from the full binarized array
-#     '''
-    
-#     start_array = np.zeros((ripple_array.shape),dtype='uint8')
-#     end_array = np.zeros((ripple_array.shape),dtype='uint8')        
-    
-#     num_trials = ripple_array.shape[0]    
-#     for trial in range(num_trials):
-#         ripplelogictrial = ripple_array[trial]
-#         starts,ends = getLogicalChunks(ripplelogictrial)
-#         temp_row = np.zeros(len(ripplelogictrial))
-#         temp_row[starts] = 1
-#         start_array[trial] = temp_row # time when each SWR starts
-#         temp_row = np.zeros(len(ripplelogictrial))
-#         temp_row[ends] = 1
-#         end_array[trial] = temp_row
-#     return start_array,end_array
-
 def getStartEndArrays(ripple_array):
     '''
-    Get separate arrays of SWR starts and SWR ends from the full binarized array
+    get separate arrays of SWR starts and SWR ends from the full binarized array
     '''
     
-    # Shift the ripple array to the right and left by one position
-    shifted_right = np.roll(ripple_array, shift=1, axis=1)
-    shifted_left = np.roll(ripple_array, shift=-1, axis=1)
+    start_array = np.zeros((ripple_array.shape),dtype='uint8')
+    end_array = np.zeros((ripple_array.shape),dtype='uint8')        
     
-    # Find the start by looking for a transition from 0 to 1
-    start_array = (ripple_array == 1) & (shifted_right == 0)
-    start_array[:, 0] = ripple_array[:, 0]  # Handle the edge case for the first column
+    num_trials = ripple_array.shape[0]    
+    for trial in range(num_trials):
+        ripplelogictrial = ripple_array[trial]
+        starts,ends = getLogicalChunks(ripplelogictrial)
+        temp_row = np.zeros(len(ripplelogictrial))
+        temp_row[starts] = 1
+        start_array[trial] = temp_row # time when each SWR starts
+        temp_row = np.zeros(len(ripplelogictrial))
+        temp_row[ends] = 1
+        end_array[trial] = temp_row
+    return start_array,end_array
+
+# def getStartEndArrays(ripple_array):
+#     '''
+#     Get separate arrays of SWR starts and SWR ends from the full binarized array
+#     '''
     
-    # Find the end by looking for a transition from 1 to 0
-    end_array = (ripple_array == 1) & (shifted_left == 0)
-    end_array[:, -1] = ripple_array[:, -1]  # Handle the edge case for the last column
+#     # Shift the ripple array to the right and left by one position
+#     shifted_right = np.roll(ripple_array, shift=1, axis=1)
+#     shifted_left = np.roll(ripple_array, shift=-1, axis=1)
     
-    return start_array.astype('uint8'), end_array.astype('uint8')
+#     # Find the start by looking for a transition from 0 to 1
+#     start_array = (ripple_array == 1) & (shifted_right == 0)
+#     start_array[:, 0] = ripple_array[:, 0]  # Handle the edge case for the first column
+    
+#     # Find the end by looking for a transition from 1 to 0
+#     end_array = (ripple_array == 1) & (shifted_left == 0)
+#     end_array[:, -1] = ripple_array[:, -1]  # Handle the edge case for the last column
+    
+#     return start_array.astype('uint8'), end_array.astype('uint8')
 
 def detectRipplesHamming(eeg_rip,trans_width,sr,iedlogic):
     # detect ripples similar to with Butterworth, but using Norman et al 2019 algo (based on Stark 2014 algo). Description:
@@ -1815,9 +1815,6 @@ def StartFig():
     test = plt.figure();
     plt.rcParams.update({'font.size':14});
     return test;
-
-def PrintTest():
-    print('testttt')
     
 def SaveFig(basename):
     plt.savefig(basename+'.png')
@@ -2140,7 +2137,7 @@ def ClusterRun(function, parameter_list, max_cores=999):
 #2023-03-14 SWRanalysisClustering with HFA added using 20 GB jobs have 91 HPC left, 75 non-HPC left
 #2023-03-15 same using 40 GB have 83 HPC and 65 nonHPC_MTL left
 #2023-03-15 same using 60 GB have 82 and 64 left. No more memory errors? 
-#2023-03-16 using 100 GB gave 66 (!) and 64 left. This got me to 241894 trials. 150 GB didn't add any. 
+#2023-03-16 using 100 GB gave 66 (!) and 64 left. This got me to 241894 trials. 150 GB didn't add any. s
 #2023-03-24 ran up to 80 GB with AMY--saw no memory errors after that
 #2023-03-25 ran clustering up to 80 GB with revised nonHPC_MTL and down to 50. Down to 49 after doing 135 GB. 175 GB didn't change anything.
 #2023-03-26 ran SWRanalysis up to 20 GB with nonHPC_MTL. 80GB gave me 45. 120 GB gave me 41.
@@ -2215,4 +2212,3 @@ def ClusterCheckedTup(function, parameter_list, *args, **kwargs):
           '\n  '.join(str(parameter_list[i]) for i in range(len(res))
             if not bool(res[i])))
         raise RuntimeError(str(failed)+' of '+str(len(res))+' jobs failed!')
-
